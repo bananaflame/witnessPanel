@@ -1,0 +1,14 @@
+moveright
+	if on row pixel value and moving to right doesn't place in no-go zone
+		moveright
+if currpos within 10 pixels of column pixel value
+	set currpos column value to that column value
+	allow to move in that direction
+#have list of row pixel values and column pixel values based on maze dimensions
+
+
+To Do:
+convert maze data to wall surfaces
+add start and finish functionality to maze data
+add intersection sprites for collisions at maze intersections, as well as hexagon sprites
+draw line body based on occupied intersections
