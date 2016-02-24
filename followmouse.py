@@ -1,4 +1,5 @@
 import pygame
+import math
 
 black = (  0,  0,    0)
 white = (255, 255, 255)
@@ -28,11 +29,16 @@ class Trace(pygame.sprite.Sprite):
     def update(self,walls):
         
         mousepos = pygame.mouse.get_pos()
-        diffx = mousepos[0] - self.rect.x
-        diffy = -mousepos[1] + self.rect.y #reversed bc display y-axis is flipped
+        diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
+        diffy = -mousepos[1] + (self.rect.y+ self.width/2) #reversed bc display y-axis is flipped
 
+        #determine primary axis
+        if abs(diffy) > abs(diffx):
+            primeaxis = up
+        else:
+            primeaxis = right
         #determine primary direction, can maybe be cleaned up
-        if abs(diffx) > abs(diffy):#x is primary axis
+        if primeaxis == right:#x is primary axis
             if diffx > 0:
                 primedir = right
             else:
@@ -53,9 +59,14 @@ class Trace(pygame.sprite.Sprite):
             else:
                 secdir = left
 
-        if not self.trymove(primedir, 1, walls):
-            self.trymove(secdir, 1, walls)
-
+        if primeaxis == up and abs(diffy) > 3:
+            if not self.trymove(primedir, abs(diffy/10), walls):
+                self.trymove(secdir, abs(diffx/10), walls)
+        if primeaxis == right and abs(diffx) > 3:
+            if not self.trymove(primedir, abs(diffx/10), walls):
+                self.trymove(secdir, abs(diffy/10), walls)
+                #this doesn't work with hypot
+                #probably need to rearrange trymove, have multiple based on directions
 
     def trymove(self, direction, distance, walls):
         if direction == up:
@@ -112,8 +123,10 @@ wall3 = Wall(210,100,40,40,blue)
 wall4 = Wall(100,155,40,40,blue)
 wall5 = Wall(155,155,40,40,blue)
 wall6 = Wall(210,155,40,40,blue)
+wall7 = Wall(100,50,150,35,blue)
+wall8 = Wall(65,50,35,135,blue)
 walllist = pygame.sprite.Group()
-walllist.add(wall,wall2,wall3,wall4,wall5,wall6)
+walllist.add(wall,wall2,wall3,wall4,wall5,wall6,wall7,wall8)
 
 while not done:
     for event in pygame.event.get():
