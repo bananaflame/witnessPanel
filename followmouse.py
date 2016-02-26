@@ -32,42 +32,33 @@ class Trace(pygame.sprite.Sprite):
         diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + (self.rect.y+ self.width/2) #reversed bc display y-axis is flipped
 
-        #determine primary axis
-        if abs(diffy) > abs(diffx):
-            primeaxis = up
-        else:
-            primeaxis = right
-        #determine primary direction, can maybe be cleaned up
-        if primeaxis == right:#x is primary axis
-            if diffx > 0:
-                primedir = right
-            else:
-                primedir = left
-                
-            if diffy > 0:
-                secdir = up
-            else:
-                secdir = down
-        else:#y is primary axis
-            if diffy > 0 :
-                primedir = up
-            else:
-                primedir = down
+        if abs(diffy) > abs(diffx):#primary axis is up/down
+            if abs(diffy) > 3:#prevents movement when cursor close enough to center
+                if diffy > 0 :
+                    can_move_prime = self.trymove(up,abs(diffy)/10,walls)
+                else:
+                    can_move_prime = self.trymove(down,abs(diffy)/10,walls)
 
-            if diffx > 0:
-                secdir = right
-            else:
-                secdir = left
+                if not can_move_prime and abs(diffx) > 3:
+                    if diffx > 0:
+                        self.trymove(right,abs(diffx)/10,walls)
+                    else:
+                        self.trymove(left,abs(diffx)/10,walls)
+        else:#primary axis is left/right
+            if abs(diffx) > 3:
+                if diffx > 0:
+                    can_move_prime = self.trymove(right,abs(diffx)/10,walls)
+                else:
+                    can_move_prime = self.trymove(left,abs(diffx)/10,walls)
+                    
+                if not can_move_prime and abs(diffy) > 3:
+                    if diffy > 0:
+                        self.trymove(up,abs(diffy)/10,walls)
+                    else:
+                        self.trymove(down,abs(diffy)/10,walls)
 
-        if primeaxis == up and abs(diffy) > 3:
-            if not self.trymove(primedir, abs(diffy/10), walls) and abs(diffx) > 3:#second part of this prevents single pixel oscillation
-                self.trymove(secdir, abs(diffx/10), walls)
-        if primeaxis == right and abs(diffx) > 3:
-            if not self.trymove(primedir, abs(diffx/10), walls) and abs(diffy) > 3:
-                self.trymove(secdir, abs(diffy/10), walls)
-   
     def trymove(self, direction, dist_to_move, walls):
-        distance = math.ceil(dist_to_move) #fixes problem with rect coords being floored upon display
+        distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
         if direction == up:
             self.rect.y -= distance #don't forget display y-axis is reverse
             collisions = pygame.sprite.spritecollide(self, walls, False)
