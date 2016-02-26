@@ -60,15 +60,14 @@ class Trace(pygame.sprite.Sprite):
                 secdir = left
 
         if primeaxis == up and abs(diffy) > 3:
-            if not self.trymove(primedir, abs(diffy/10), walls):
+            if not self.trymove(primedir, abs(diffy/10), walls) and abs(diffx) > 3:#second part of this prevents single pixel oscillation
                 self.trymove(secdir, abs(diffx/10), walls)
         if primeaxis == right and abs(diffx) > 3:
-            if not self.trymove(primedir, abs(diffx/10), walls):
+            if not self.trymove(primedir, abs(diffx/10), walls) and abs(diffy) > 3:
                 self.trymove(secdir, abs(diffy/10), walls)
-                #this doesn't work with hypot
-                #probably need to rearrange trymove, have multiple based on directions
-
-    def trymove(self, direction, distance, walls):
+   
+    def trymove(self, direction, dist_to_move, walls):
+        distance = math.ceil(dist_to_move) #fixes problem with rect coords being floored upon display
         if direction == up:
             self.rect.y -= distance #don't forget display y-axis is reverse
             collisions = pygame.sprite.spritecollide(self, walls, False)

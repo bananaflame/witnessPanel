@@ -6,6 +6,7 @@ play with values of that fraction and the distance the cursor has to be from cen
 To Do:
 clean up potential redundancies in movement direction variables in movement section
 try to implement move towards intersection when primary direction is towards other thing
+
 convert maze data to wall surfaces, scale for resolution and variable grid sizes
 add start and finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
