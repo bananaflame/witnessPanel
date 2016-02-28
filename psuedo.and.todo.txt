@@ -4,7 +4,7 @@ problem: moving by some fraction of diffx or diffy means that when moving hard d
 play with values of that fraction and the distance the cursor has to be from center of line head for it to move, might be able to be more precise with larger denom on fraction
 
 To Do:
-clean up potential redundancies in movement direction variables in movement section
+draw the squares in the grid based on maze data, check if the line width between them is pixel constant for the line head, might need tweaking
 try to implement move towards intersection when primary direction is towards other thing
 
 convert maze data to wall surfaces, scale for resolution and variable grid sizes
