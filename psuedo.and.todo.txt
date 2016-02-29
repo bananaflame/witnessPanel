@@ -3,6 +3,8 @@ ideas, problems, misc:
 problem: moving by some fraction of diffx or diffy means that when moving hard diagonal, it's easy to miss intersections and just go in line instead of staircase
 play with values of that fraction and the distance the cursor has to be from center of line head for it to move, might be able to be more precise with larger denom on fraction
 
+idea: line start is circle that grows bigger, created in constructor of Trace *and added to the trace body sprite list* so it keeps getting drawn
+
 To Do:
 draw the squares in the grid based on maze data, check if the line width between them is pixel constant for the line head, might need tweaking
 try to implement move towards intersection when primary direction is towards other thing

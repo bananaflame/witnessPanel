@@ -17,12 +17,12 @@ defaultnullzones = (((1,0),(2,0)),#there might be an easier way to store this da
                     ((1,0),(1,1)))
 
 class Maze():
-    def __init__(self, display, size, nullzones, symbols, inlines, linewidth, bgcolor, gridcolor):
+    def __init__(self, display, size, nullzones, symbols, inlines, linefrac, bgcolor, gridcolor):
         self.size = size #tuple with (x,y)
         self.nullzones = nullzones #see default above
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.inlines = inlines #starts, ends, and hexagons, unsure of formatting
-        self.linewidth = linewidth #should be a fraction, i.e. 1/4 for 1/4 the size of squares
+        self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
         self.bgcolor = bgcolor
         self.gridcolor = gridcolor
         
@@ -44,37 +44,36 @@ class Maze():
         image = display.copy()
         image.fill(self.bgcolor)
         screenrect = display.get_rect()
-        print(screenrect)
-        print(screenrect.w)
-        print(screenrect.h)
-        #get largest possible square size (remember linewidth is fraction of square size, like 1/4)
+        #get largest possible square size (remember linefrac is fraction of square size, like 1/4)
         #includes space in between squares and 1 line width worth of buffer around the edges
-        squaresize = screenrect.w // (self.size[0] + (2*self.linewidth*self.size[0]) + self.linewidth)
+        squaresize = screenrect.w // (self.size[0] + (2*self.linefrac*self.size[0]) + self.linefrac)
         print("first squaresize is "+str(squaresize))
         self.longside = right
         print(str(self.size[1])+"is self size 1")
-        print("if "+str(squaresize*(1+self.linewidth)*self.size[1])+str(squaresize*self.linewidth)+"greater than "+str(screenrect.h))
-        if squaresize*(1+self.linewidth)*self.size[1] + squaresize*self.linewidth > screenrect.h:
-            squaresize = screenrect.h // (self.size[1] + (2*self.linewidth*self.size[1]) + self.linewidth)
+        print("if "+str(squaresize*(1+self.linefrac)*self.size[1])+str(squaresize*self.linefrac)+"greater than "+str(screenrect.h))
+        if squaresize*(1+self.linefrac)*self.size[1] + squaresize*self.linefrac > screenrect.h:
+            squaresize = screenrect.h // (self.size[1] + (2*self.linefrac*self.size[1]) + self.linefrac)
             print("squaresize is vertical, - "+str(squaresize)) 
             self.longside = up
         squaresize = int(squaresize)
+        self.linewidth = squaresize*self.linefrac#I need the pixel value of linewidth more after this, so this will be useful
         
-        widthspace = int(screenrect.w - (squaresize*(1+self.linewidth)*self.size[0] + squaresize*self.linewidth))
-        heightspace = int(screenrect.h - (squaresize*(1+self.linewidth)*self.size[1] + squaresize*self.linewidth))
+        widthspace = int(screenrect.w - ((squaresize+self.linewidth)*self.size[0] + self.linewidth))
+        heightspace = int(screenrect.h - ((squaresize+self.linewidth)*self.size[1] + self.linewidth))
 
         print("widthspace is: "+str(widthspace))
         print("heightspace is: "+str(heightspace))
 
         
         self.walls = pygame.sprite.Group()
-        self.walls.add(Wall(0,0,widthspace//2,screenrect.h,self.bgcolor))#left boundary
-        self.walls.add(Wall(screenrect.w-widthspace//2,0,screenrect.w,screenrect.h,self.bgcolor))
-        print("adding wall: ")
-        print(str(widthspace//2)+", 0, "+str(screenrect.w-widthspace//2)+", "+str(heightspace//2))
-        self.walls.add(Wall(widthspace//2,0,screenrect.w-widthspace//2,heightspace//2,self.bgcolor))
-        self.walls.add(Wall(widthspace//2,screenrect.h-heightspace//2,screenrect.w-widthspace//2,screenrect.h,self.bgcolor))
-        
+        self.walls.add(Wall(0,0,widthspace//2,
+                            screenrect.h,self.bgcolor))#left boundary
+        self.walls.add(Wall(screenrect.w-widthspace//2,0,
+                            screenrect.w,screenrect.h,self.bgcolor))#right boundary
+        self.walls.add(Wall(widthspace//2,0,
+                            screenrect.w-widthspace//2,heightspace//2,self.bgcolor))#top boundary
+        self.walls.add(Wall(widthspace//2,screenrect.h-heightspace//2,
+                            screenrect.w-widthspace//2,screenrect.h,self.bgcolor))#bottom boundary
 
     def drawMaze(self, display):
         self.walls.draw(display)#maybe blit instead of drawing walls each time?
@@ -97,31 +96,31 @@ class Trace(pygame.sprite.Sprite):
         mousepos = pygame.mouse.get_pos()
         diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + (self.rect.y+ self.width/2) #reversed bc display y-axis is flipped
-
+        fractiontomove = 3
         if abs(diffy) > abs(diffx):#primary axis is up/down
             if abs(diffy) > 3:#prevents movement when cursor close enough to center
                 if diffy > 0 :
-                    can_move_prime = self.trymove(up,abs(diffy)/10,walls)
+                    can_move_prime = self.trymove(up,abs(diffy)/fractiontomove,walls)
                 else:
-                    can_move_prime = self.trymove(down,abs(diffy)/10,walls)
+                    can_move_prime = self.trymove(down,abs(diffy)/fractiontomove,walls)
 
                 if not can_move_prime and abs(diffx) > 3:
                     if diffx > 0:
-                        self.trymove(right,abs(diffx)/10,walls)
+                        self.trymove(right,abs(diffx)/fractiontomove,walls)
                     else:
-                        self.trymove(left,abs(diffx)/10,walls)
+                        self.trymove(left,abs(diffx)/fractiontomove,walls)
         else:#primary axis is left/right
             if abs(diffx) > 3:
                 if diffx > 0:
-                    can_move_prime = self.trymove(right,abs(diffx)/10,walls)
+                    can_move_prime = self.trymove(right,abs(diffx)/fractiontomove,walls)
                 else:
-                    can_move_prime = self.trymove(left,abs(diffx)/10,walls)
+                    can_move_prime = self.trymove(left,abs(diffx)/fractiontomove,walls)
                     
                 if not can_move_prime and abs(diffy) > 3:
                     if diffy > 0:
-                        self.trymove(up,abs(diffy)/10,walls)
+                        self.trymove(up,abs(diffy)/fractiontomove,walls)
                     else:
-                        self.trymove(down,abs(diffy)/10,walls)
+                        self.trymove(down,abs(diffy)/fractiontomove,walls)
 
     def trymove(self, direction, dist_to_move, walls):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
