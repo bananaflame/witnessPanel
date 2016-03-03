@@ -6,15 +6,14 @@ play with values of that fraction and the distance the cursor has to be from cen
 idea: line start is circle that grows bigger, created in constructor of Trace *and added to the trace body sprite list* so it keeps getting drawn
 
 To Do:
-draw the squares in the grid based on maze data, check if the line width between them is pixel constant for the line head, might need tweaking
-try to implement move towards intersection when primary direction is towards other thing
-
-convert maze data to wall surfaces, scale for resolution and variable grid sizes
+*implement move towards intersection when primary direction is towards other thing*
 add start and finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
+ - maybe don't do this ^ but find a way to store trace path
 draw line body based on occupied intersections, and stretch active dimension of a "current" rectangle surface as line head moves
 
 further down the line:
+check if variables need to be self.var or just var
 solution checking: [SPOILERS FOR THE WITNESS PUZZLE MECHANICS BELOW]
  - hexagon sprites all collide with line segments
 use left/right of line algorithm to separate grid into groups, for all white/black squares check if any of other color in group

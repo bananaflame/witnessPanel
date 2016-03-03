@@ -23,8 +23,8 @@ class Maze():
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.inlines = inlines #starts, ends, and hexagons, unsure of formatting
         self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
-        self.bgcolor = bgcolor
-        self.gridcolor = gridcolor
+        self.bgcolor = bgcolor #color of squares and border
+        self.gridcolor = gridcolor #color of grid lines
         
         self.grid = []
         for y in range(size[0]):
@@ -32,7 +32,7 @@ class Maze():
             for x in range(size[1]):
                 self.grid[y].append(0)
 
-        self.generateMazeImage(display)
+        self.generateWalls(display)
         
     def printMaze(self):
         for i in self.grid:
@@ -40,40 +40,43 @@ class Maze():
                 print(j, end=" ")
             print()
             
-    def generateMazeImage(self,display):
+    def generateWalls(self,display):
         image = display.copy()
         image.fill(self.bgcolor)
         screenrect = display.get_rect()
         #get largest possible square size (remember linefrac is fraction of square size, like 1/4)
-        #includes space in between squares and 1 line width worth of buffer around the edges
-        squaresize = screenrect.w // (self.size[0] + (2*self.linefrac*self.size[0]) + self.linefrac)
-        print("first squaresize is "+str(squaresize))
+        #includes space in between squares and 1.5x line width worth of buffer on both bounding edges
+        squaresize = screenrect.w // (self.size[0] + (self.linefrac*self.size[0]) + 4*self.linefrac)
         self.longside = right
-        print(str(self.size[1])+"is self size 1")
-        print("if "+str(squaresize*(1+self.linefrac)*self.size[1])+str(squaresize*self.linefrac)+"greater than "+str(screenrect.h))
+        #test if that squaresize is compatible with vertical dimension, if it bleeds over vertical is limiting
         if squaresize*(1+self.linefrac)*self.size[1] + squaresize*self.linefrac > screenrect.h:
-            squaresize = screenrect.h // (self.size[1] + (2*self.linefrac*self.size[1]) + self.linefrac)
-            print("squaresize is vertical, - "+str(squaresize)) 
+            squaresize = screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 4*self.linefrac)
             self.longside = up
         squaresize = int(squaresize)
-        self.linewidth = squaresize*self.linefrac#I need the pixel value of linewidth more after this, so this will be useful
+        self.linewidth = int(squaresize*self.linefrac)#I need the pixel value of self.linewidth more after this, so this will be useful
         
         widthspace = int(screenrect.w - ((squaresize+self.linewidth)*self.size[0] + self.linewidth))
         heightspace = int(screenrect.h - ((squaresize+self.linewidth)*self.size[1] + self.linewidth))
-
-        print("widthspace is: "+str(widthspace))
-        print("heightspace is: "+str(heightspace))
-
         
         self.walls = pygame.sprite.Group()
         self.walls.add(Wall(0,0,widthspace//2,
                             screenrect.h,self.bgcolor))#left boundary
-        self.walls.add(Wall(screenrect.w-widthspace//2,0,
+        self.walls.add(Wall(((squaresize+self.linewidth)*self.size[0] + self.linewidth)+ widthspace//2,0,
                             screenrect.w,screenrect.h,self.bgcolor))#right boundary
         self.walls.add(Wall(widthspace//2,0,
                             screenrect.w-widthspace//2,heightspace//2,self.bgcolor))#top boundary
-        self.walls.add(Wall(widthspace//2,screenrect.h-heightspace//2,
-                            screenrect.w-widthspace//2,screenrect.h,self.bgcolor))#bottom boundary
+        self.walls.add(Wall(widthspace//2,((squaresize+self.linewidth)*self.size[1] + self.linewidth)+heightspace//2,
+                            ((squaresize+self.linewidth)*self.size[0] + self.linewidth)+ widthspace//2,screenrect.h,self.bgcolor))#bottom boundary
+        
+        #add grid squares, these for loops might be redundant with creation of self.grid earlier, clean up
+        for y in range(self.size[1]):
+            for x in range(self.size[0]):
+                squarex = widthspace//2+self.linewidth+(x*(squaresize+self.linewidth))
+                squarey = heightspace//2+self.linewidth+(y*(squaresize+self.linewidth))
+                print("Making wall with "+str(squarex)+", "+str(squarey)+", "+str(squarex+squaresize)+", "+str(squarey+squaresize))
+                self.walls.add(Wall(squarex,squarey,squaresize,squaresize,(50*x,50*y,0)))
+                                
+
 
     def drawMaze(self, display):
         self.walls.draw(display)#maybe blit instead of drawing walls each time?
@@ -96,7 +99,7 @@ class Trace(pygame.sprite.Sprite):
         mousepos = pygame.mouse.get_pos()
         diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + (self.rect.y+ self.width/2) #reversed bc display y-axis is flipped
-        fractiontomove = 3
+        fractiontomove = 6
         if abs(diffy) > abs(diffx):#primary axis is up/down
             if abs(diffy) > 3:#prevents movement when cursor close enough to center
                 if diffy > 0 :
@@ -168,7 +171,7 @@ done = False
 testmaze = Maze(screen,(3,3),(),(),(),1/6,blue,green)
 #testmaze.printself()
 
-testtrace = Trace(100,100,15,black)
+testtrace = Trace(100,100,testmaze.linewidth,black)
 tracelist = pygame.sprite.Group()
 tracelist.add(testtrace)
 
