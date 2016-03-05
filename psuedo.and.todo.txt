@@ -1,12 +1,10 @@
 ideas, problems, misc:
 
-problem: moving by some fraction of diffx or diffy means that when moving hard diagonal, it's easy to miss intersections and just go in line instead of staircase
-play with values of that fraction and the distance the cursor has to be from center of line head for it to move, might be able to be more precise with larger denom on fraction
+problem: trace sometimes snaps to intersection when pressing against outer border
 
 idea: line start is circle that grows bigger, created in constructor of Trace *and added to the trace body sprite list* so it keeps getting drawn
 
 To Do:
-*implement move towards intersection when primary direction is towards other thing*
 add start and finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
  - maybe don't do this ^ but find a way to store trace path
