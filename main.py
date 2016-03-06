@@ -17,14 +17,19 @@ defaultnullzones = (((1,0),(2,0)),#there might be an easier way to store this da
                     ((1,0),(1,1)))
 
 class Maze():
-    def __init__(self, display, size, nullzones, symbols, inlines, linefrac, bgcolor, gridcolor):
+    def __init__(self, display, size, nullzones,
+                 symbols, starts, ends, hexagons,
+                 linefrac, bgcolor, gridcolor, tracecolor):
         self.size = size #tuple with (x,y)
         self.nullzones = nullzones #see default above
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
-        self.inlines = inlines #starts, ends, and hexagons, unsure of formatting
+        self.starts = starts #list of starting point positions
+        self.ends = ends #list of ending point positions
+        self.hexagons = hexagons #list of hexagon positions
         self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
         self.bgcolor = bgcolor #color of squares and border
         self.gridcolor = gridcolor #color of grid lines
+        self.tracecolor = tracecolor #color of trace
         
         self.grid = []
         for y in range(size[0]):
@@ -42,51 +47,80 @@ class Maze():
             
     def generateWalls(self,display):
         image = display.copy()
-        image.fill(self.bgcolor)
-        screenrect = display.get_rect()
+        self.screenrect = display.get_rect()
         #get largest possible square size (remember linefrac is fraction of square size, like 1/4)
         #includes space in between squares and 1.5x line width worth of buffer on both bounding edges
-        self.squaresize = screenrect.w // (self.size[0] + (self.linefrac*self.size[0]) + 4*self.linefrac)
+        self.squaresize = self.screenrect.w // (self.size[0] + (self.linefrac*self.size[0]) + 4*self.linefrac)
         self.longside = right
         #test if that self.squaresize is compatible with vertical dimension, if it bleeds over vertical is limiting
-        if self.squaresize*(1+self.linefrac)*self.size[1] + 4*self.squaresize*self.linefrac > screenrect.h:
-            self.squaresize = screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 4*self.linefrac)
+        if self.squaresize*(1+self.linefrac)*self.size[1] + 4*self.squaresize*self.linefrac > self.screenrect.h:
+            self.squaresize = self.screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 4*self.linefrac)
             self.longside = up
         self.squaresize = int(self.squaresize)
         self.linewidth = int(self.squaresize*self.linefrac)#I need the pixel value of self.linewidth more after this, so this will be useful
         
-        self.wspace = int(screenrect.w - ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth))
-        self.hspace = int(screenrect.h - ((self.squaresize+self.linewidth)*self.size[1] + self.linewidth))
+        self.wspace = int(self.screenrect.w - ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth))
+        self.hspace = int(self.screenrect.h - ((self.squaresize+self.linewidth)*self.size[1] + self.linewidth))
         
         self.walls = pygame.sprite.Group()
         self.walls.add(Wall(0,0,self.wspace//2,
-                            screenrect.h,self.bgcolor))#left boundary
+                            self.screenrect.h,self.bgcolor))#left boundary
         self.walls.add(Wall(((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,0,
-                            screenrect.w,screenrect.h,self.bgcolor))#right boundary
+                            self.screenrect.w,self.screenrect.h,self.bgcolor))#right boundary
         self.walls.add(Wall(self.wspace//2,0,
-                            screenrect.w-self.wspace//2,self.hspace//2,self.bgcolor))#top boundary
+                            self.screenrect.w-self.wspace//2,self.hspace//2,self.bgcolor))#top boundary
         self.walls.add(Wall(self.wspace//2,((self.squaresize+self.linewidth)*self.size[1] + self.linewidth)+self.hspace//2,
-                            ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,screenrect.h,self.bgcolor))#bottom boundary
+                            ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,self.screenrect.h,self.bgcolor))#bottom boundary
         
         #add grid squares, these for loops might be redundant with creation of self.grid earlier, clean up
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 squarex = self.wspace//2+self.linewidth+(x*(self.squaresize+self.linewidth))
                 squarey = self.hspace//2+self.linewidth+(y*(self.squaresize+self.linewidth))
-                self.walls.add(Wall(squarex,squarey,self.squaresize,self.squaresize,(50*x,50*y,0)))
-                                
+                self.walls.add(Wall(squarex,squarey,self.squaresize,self.squaresize,self.bgcolor))
 
+    def generateStarts(self):
+        print(self.linewidth)
+        startlist = []
+        for startpos in self.starts:
+            startlist.append(TraceStart(self.wspace//2 + self.linewidth//2 + startpos[0]*(self.squaresize+self.linewidth),
+                                     self.hspace//2 + self.linewidth//2 + startpos[1]*(self.squaresize+self.linewidth),
+                                     int(self.linewidth/2*2.1), self.gridcolor, self.tracecolor))
+        return startlist
 
-    def drawMaze(self, display):
-        self.walls.draw(display)#maybe blit instead of drawing walls each time?
+    def draw(self, display):
+        self.walls.draw(display)
+
+    def checkStart(self,mousepos):
+        gridpos = [(mousepos[0] - (self.wspace//2))/(self.squaresize+self.linewidth),
+                   (mousepos[1] - (self.hspace//2))/(self.squaresize+self.linewidth)]
+        #for start in self.starts:
+            
+    
+class TraceStart():
+    def __init__(self, x, y, radius, emptycolor, fullcolor):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.emptycolor = emptycolor
+        self.fullcolor = fullcolor
         
-class Trace(pygame.sprite.Sprite):
-    def __init__(self, maze, startx, starty, color):
+        self.currentradius = 0
+        self.is_alive = False
+        
+    def draw(self, display):
+        if self.is_alive:
+            pass
+        else:
+            pygame.draw.circle(display, self.emptycolor, (self.x,self.y), self.radius)
+
+class TraceHead(pygame.sprite.Sprite):
+    def __init__(self, maze, startx, starty):
         super().__init__()
         self.maze = maze
         self.width = maze.linewidth
         self.image = pygame.Surface([self.width,self.width])
-        self.color = color
+        self.color = maze.tracecolor
         
         self.rect = self.image.get_rect()
         self.rect.x = startx
@@ -99,7 +133,7 @@ class Trace(pygame.sprite.Sprite):
         mousepos = pygame.mouse.get_pos()
         diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + (self.rect.y+ self.width/2) #reversed bc display y-axis is flipped
-        fractiontomove = 6
+        fractiontomove = 4
 
         gridpos = [(self.rect.x - (self.maze.wspace//2))/(self.maze.squaresize+self.maze.linewidth),
                    (self.rect.y - (self.maze.hspace//2))/(self.maze.squaresize+self.maze.linewidth)]
@@ -115,7 +149,7 @@ class Trace(pygame.sprite.Sprite):
                     self.trymove(right,diffx/fractiontomove)
                 elif diffx < -2:
                     self.trymove(left,abs(diffx)/fractiontomove)
-                elif abs(diffy) > self.maze.squaresize//2:#if cursor getting far away, check if can snap to intersection
+                elif abs(diffy) > self.maze.squaresize//3:#if cursor getting far away, check if can snap to intersection
                     disttoisect = (self.rect.x - (self.maze.wspace//2))%(self.maze.squaresize+self.maze.linewidth)
                     if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
                         self.trymove(left,disttoisect)
@@ -132,7 +166,7 @@ class Trace(pygame.sprite.Sprite):
                     self.trymove(up,diffy/fractiontomove)
                 elif diffy < -2:
                     self.trymove(down,abs(diffy)/fractiontomove)
-                elif abs(diffx) > self.maze.squaresize//2:#if cursor getting far away, check if can snap to intersection
+                elif abs(diffx) > self.maze.squaresize//3:#if cursor getting far away, check if can snap to intersection
                     disttoisect = (self.rect.y - (self.maze.hspace//2))%(self.maze.squaresize+self.maze.linewidth)
                     if disttoisect <= self.width:#trace is 1 linewidth below intersection 
                         self.trymove(up,disttoisect)
@@ -170,6 +204,11 @@ class Trace(pygame.sprite.Sprite):
                     collisions = pygame.sprite.spritecollide(self,self.maze.walls,False)
                     for wall in collisions:
                         self.rect.left = wall.rect.right
+    def draw(self, display):
+        screen.blit(self.image, self.rect)
+        
+class TraceBody():
+    pass
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self,x,y,width,height,color):
@@ -180,27 +219,54 @@ class Wall(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.y = y
         self.rect.x = x
-        
+
+
+
 pygame.init()
 displaysize = [800,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 done = False
-testmaze = Maze(screen,(6,5),(),(),(),1/4,blue,green)
+testmaze = Maze(screen,(3,3),(),
+                (),((0,0),(1,1)),(),(),
+                1/5,(0,70,205,255),(25,25,112,255), white)
 #testmaze.printself()
 
-testtrace = Trace(testmaze,100,100,black)
-tracelist = pygame.sprite.Group()
-tracelist.add(testtrace)
+tracestarts = testmaze.generateStarts()
+tracehead = TraceHead(testmaze,100,100)
+
+
+m1prev = False
 
 while not done:
-    for event in pygame.event.get(): # User did something
-        if event.type == pygame.QUIT: # If user clicked close
-            done = True # Flag that we are done so we exit this loop
+    pygame.event.clear()#won't need to get events from event queue, chuck'em
+    mousestates = pygame.mouse.get_pressed()
+    if mousestates[0] != m1prev:
+        if m1prev == False:#mouse being pressed
+            mousepos = pygame.mouse.get_pos()
+            if testmaze.checkStart(mousepos) == True: #check if mouse on maze start
+                print("make trace")
+            
+        else:#mouse being released
+            print("release trace")
+            
+        m1prev = mousestates[0]
+    
+    
+    if mousestates[1] == True:#close program upon middle mouse
+        done = True
+
+    tracehead.update()
+    
     screen.fill(testmaze.gridcolor)
-    testmaze.drawMaze(screen)
-    tracelist.update()
-    tracelist.draw(screen)
+    testmaze.draw(screen)
+
+    tracehead.draw(screen)
+
+    for tracestart in tracestarts:
+        tracestart.draw(screen)
+    
+
     pygame.display.flip()
     clock.tick(60)
     

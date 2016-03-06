@@ -3,11 +3,17 @@ ideas, problems, misc:
 problem: trace sometimes snaps to intersection when pressing against outer border
 
 idea: line start is circle that grows bigger, created in constructor of Trace *and added to the trace body sprite list* so it keeps getting drawn
+ - working on this ^, was going to have the tracestarts be purely graphical because you can go through them in the beginning of the trace,
+   but then I remembered that the trace head collides with the sides of the trace start if you loop around and touch it
+   one solution to this might be to have an invisible sprite associated with the trace start that only counts for collisions if
+   the trace has gone through one intersection, gotta figure out how to do that though
 
 To Do:
 add start and finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
  - maybe don't do this ^ but find a way to store trace path
+    - going to have a trace body object that updates with info from trace head every frame
+      checking for intersection passing and hexagon coverage needs to happen during trymove though so nothing is jumped over
 draw line body based on occupied intersections, and stretch active dimension of a "current" rectangle surface as line head moves
 
 further down the line:
