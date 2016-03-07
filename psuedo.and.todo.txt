@@ -13,7 +13,7 @@ add start and finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
  - maybe don't do this ^ but find a way to store trace path
     - going to have a trace body object that updates with info from trace head every frame
-      checking for intersection passing and hexagon coverage needs to happen during trymove though so nothing is jumped over
+      *checking for intersection passing and hexagon coverage needs to happen during trymove though so nothing is jumped over*
 draw line body based on occupied intersections, and stretch active dimension of a "current" rectangle surface as line head moves
 
 further down the line:
@@ -23,3 +23,4 @@ solution checking: [SPOILERS FOR THE WITNESS PUZZLE MECHANICS BELOW]
 use left/right of line algorithm to separate grid into groups, for all white/black squares check if any of other color in group
 for tetrominoes analyze the group the tetromino is in
 "learning mode" aka wrong elements flash when wrong?
+make intersection snapping moving to intersection instead of snapping
