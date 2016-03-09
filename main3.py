@@ -29,8 +29,8 @@ class TraceStart(pygame.sprite.Sprite):
         self.image = pygame.Surface([self.fullradius*2,self.fullradius*2])
         self.image.fill(clear)
         self.rect = self.image.get_rect()
-        self.rect.y = pos[0] - self.fullradius
-        self.rect.x = pos[1] - self.fullradius
+        self.rect.x = pos[0] - self.fullradius
+        self.rect.y = pos[1] - self.fullradius
         
     def update(self):
         if not self.donegrowing:
@@ -38,10 +38,11 @@ class TraceStart(pygame.sprite.Sprite):
                 self.currentradius += math.ceil((self.fullradius - self.currentradius)/4)
             else:
                 self.donegrowing = True
-            pygame.draw.circle(self.image, self.color,
-                                (self.fullradius,self.fullradius),
+            
+    def draw(self, display):
+        pygame.draw.circle(display, self.color,
+                                (self.rect.x+self.fullradius,self.rect.y+self.fullradius),
                                 self.currentradius)
-        
 class TraceBody():
     pass
 
@@ -61,7 +62,6 @@ class TraceHead(pygame.sprite.Sprite):
         self.rect.x = pos[0] - self.width//2# subtract half of width bc gridpos is pixel value for center of an intersection
         self.rect.y = pos[1] - self.width//2
         self.image.fill(clear)
-        pygame.draw.circle(self.image,self.color,(self.width//2,self.width//2),self.width//2)
         
 
     def update(self,):
@@ -138,6 +138,9 @@ class TraceHead(pygame.sprite.Sprite):
                     collisions = pygame.sprite.spritecollide(self,self.mazewalls,False)
                     for wall in collisions:
                         self.rect.left = wall.rect.right
+                        
+    def draw(self,display):
+        pygame.draw.circle(display,self.color,(self.rect.x+self.width//2,self.rect.y+self.width//2),self.width//2)
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self,x,y,width,height,color):
@@ -186,6 +189,9 @@ class Maze():
             self.squaresize = self.screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 4*self.linefrac)
         self.squaresize = int(self.squaresize)
         self.linewidth = int(self.squaresize*self.linefrac)#I need the pixel value of self.linewidth more after this, so this will be useful
+        if self.linewidth % 2 == 1:#make the line width always be even so that the trace head circle will fill it completely
+            self.squaresize -= 1
+            self.linewidth = int(self.squaresize*self.linefrac)
         self.wspace = int(self.screenrect.w - ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth))
         self.hspace = int(self.screenrect.h - ((self.squaresize+self.linewidth)*self.size[1] + self.linewidth))
         self.walls = pygame.sprite.Group()
@@ -244,7 +250,9 @@ class Maze():
         tempdisplay = pygame.Surface((display.get_width(),display.get_height()))
         tempdisplay.set_colorkey(clear)#makes everything that's that color transparent
         tempdisplay.fill(clear)
-        self.tracegroup.draw(tempdisplay)#all the sections of the trace need to be faded as one image, otherwise
+        for section in self.tracegroup:
+            section.draw(tempdisplay)
+        #self.tracegroup.draw(tempdisplay)#all the sections of the trace need to be faded as one image, otherwise
                                         #we get issues with transparent surfaces overlapping and being more opaque
         tempdisplay.set_alpha(256 - self.tracegroup.fade)
         display.blit(tempdisplay,(0,0))
@@ -252,7 +260,7 @@ class Maze():
 
 
 pygame.init()
-displaysize = [700,700]
+displaysize = [800,600]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -260,8 +268,8 @@ is_alive = False
 startupdating = False
 done = False
 
-testmaze = Maze(screen,(3,3),(),
-                (),((0,0),(1,1)),(),(),
+testmaze = Maze(screen,(2,2),(),
+                (),((0,2),(2,0)),(),(),#that comma needs to be there to tell python that's a tuple tuple, not just a tuple lol
                 1/5,(0,70,205,255),(25,25,112,255), white)
 
 while not done:
