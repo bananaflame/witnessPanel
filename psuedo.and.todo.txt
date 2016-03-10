@@ -9,7 +9,7 @@ idea: line start is circle that grows bigger, created in constructor of Trace *a
    the trace has gone through one intersection, gotta figure out how to do that though
 
 To Do:
-add start and finish functionality to maze data
+add finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)
  - maybe don't do this ^ but find a way to store trace path
     - going to have a trace body object that updates with info from trace head every frame

@@ -159,7 +159,7 @@ class Maze():
         self.nullzones = nullzones #see default above
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.starts = starts #list of starting point positions
-        self.ends = ends #list of ending point positions
+        self.sortEnds(ends) #generates 4 lists of end points, one for each maze side, needed later
         self.hexagons = hexagons #list of hexagon positions
         self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
         self.bgcolor = bgcolor #color of squares and border
@@ -177,16 +177,41 @@ class Maze():
             for j in i:
                 print(j, end=" ")
             print()
+
+    def sortEnds(self,ends):
+        sortedends = sorted(ends, key=lambda end: end[2])#sorts all ends by direction value in third index
+        self.upends = []
+        self.rightends = []
+        self.downends = []
+        self.leftends = []
+        for end in sortedends:
+            if end[2] == up:
+                self.upends.append(end[0]) #adds the positions of the ends along their respective sides
+            elif end[2] == right:
+                self.rightends.append(end[1])
+            elif end[2] == down:
+                self.downends.append(end[0])
+            else:
+                self.leftends.append(end[1])
+        self.upends.sort()
+        self.rightends.sort()
+        self.downends.sort()
+        self.leftends.sort()
+        print(self.upends)
+        print(self.rightends)
+        print(self.downends)
+        print(self.leftends)
+                
             
     def generateWalls(self,display):
         image = display.copy()
         self.screenrect = display.get_rect()
         #get largest possible square size (remember linefrac is fraction of square size, like 1/4)
-        #includes space in between squares and 1.5x line width worth of buffer on both bounding edges
-        self.squaresize = self.screenrect.w // (self.size[0] + (self.linefrac*self.size[0]) + 4*self.linefrac)
+        #includes space in between squares and 2x line width worth of buffer on both bounding edges
+        self.squaresize = self.screenrect.w // (self.size[0] + (self.linefrac*self.size[0]) + 5*self.linefrac)
         #test if that self.squaresize is compatible with vertical dimension, if it bleeds over vertical is limiting
         if self.squaresize*(1+self.linefrac)*self.size[1] + 4*self.squaresize*self.linefrac > self.screenrect.h:
-            self.squaresize = self.screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 4*self.linefrac)
+            self.squaresize = self.screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 5*self.linefrac)
         self.squaresize = int(self.squaresize)
         self.linewidth = int(self.squaresize*self.linefrac)#I need the pixel value of self.linewidth more after this, so this will be useful
         if self.linewidth % 2 == 1:#make the line width always be even so that the trace head circle will fill it completely
@@ -203,7 +228,6 @@ class Maze():
                             self.screenrect.w-self.wspace//2,self.hspace//2,self.bgcolor))#top boundary
         self.walls.add(Wall(self.wspace//2,((self.squaresize+self.linewidth)*self.size[1] + self.linewidth)+self.hspace//2,
                             ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,self.screenrect.h,self.bgcolor))#bottom boundary
-        #add grid squares, these for loops might be redundant with creation of self.grid earlier, clean up
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 squarex = self.wspace//2+self.linewidth+(x*(self.squaresize+self.linewidth))
@@ -252,15 +276,15 @@ class Maze():
         tempdisplay.fill(clear)
         for section in self.tracegroup:
             section.draw(tempdisplay)
-        #self.tracegroup.draw(tempdisplay)#all the sections of the trace need to be faded as one image, otherwise
-                                        #we get issues with transparent surfaces overlapping and being more opaque
+        #all the sections of the trace need to be faded as one image, otherwise
+        #we get issues with transparent surfaces overlapping and being more opaque
         tempdisplay.set_alpha(256 - self.tracegroup.fade)
         display.blit(tempdisplay,(0,0))
         
 
 
 pygame.init()
-displaysize = [800,600]
+displaysize = [800,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -268,9 +292,11 @@ is_alive = False
 startupdating = False
 done = False
 
-testmaze = Maze(screen,(2,2),(),
-                (),((0,2),(2,0)),(),(),#that comma needs to be there to tell python that's a tuple tuple, not just a tuple lol
+testmaze = Maze(screen,(3,4),(),
+                (),((0,0),),((0,2,left),(0,1,left),(1,0,up),(3,3,down),(3,0,right),(1,3,down)),(),
                 1/5,(0,70,205,255),(25,25,112,255), white)
+#reminder: when only one tuple in another tuple, needs comma at end to tell python
+#it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
 
 while not done:
     pygame.event.clear()#won't need to get events from event queue, chuck'em
