@@ -11,12 +11,6 @@ up = 0
 right = 1
 down = 2
 left = 3
-defaultsize = (3,2)
-defaultnullzones = (((1,0),(2,0)),#there might be an easier way to store this data
-                    ((1,0),(1,1)))
-
-
-
 
 class TraceStart(pygame.sprite.Sprite):
     def __init__(self, maze, pos):
@@ -143,13 +137,13 @@ class TraceHead(pygame.sprite.Sprite):
         pygame.draw.circle(display,self.color,(self.rect.x+self.width//2,self.rect.y+self.width//2),self.width//2)
 
 class Wall(pygame.sprite.Sprite):
-    def __init__(self,x,y,width,height,color):
+    def __init__(self,startpos,endpos,color):
         super().__init__()
-        self.image = pygame.Surface([width, height])
+        self.image = pygame.Surface([endpos[0]-startpos[0],endpos[1]-startpos[1]])
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        self.rect.y = y
-        self.rect.x = x
+        self.rect.x = startpos[0]
+        self.rect.y = startpos[1]
         
 class Maze():
     def __init__(self, display, size, nullzones,
@@ -196,12 +190,7 @@ class Maze():
         self.upends.sort()
         self.rightends.sort()
         self.downends.sort()
-        self.leftends.sort()
-        print(self.upends)
-        print(self.rightends)
-        print(self.downends)
-        print(self.leftends)
-                
+        self.leftends.sort()                
             
     def generateWalls(self,display):
         image = display.copy()
@@ -220,6 +209,56 @@ class Maze():
         self.wspace = int(self.screenrect.w - ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth))
         self.hspace = int(self.screenrect.h - ((self.squaresize+self.linewidth)*self.size[1] + self.linewidth))
         self.walls = pygame.sprite.Group()
+
+        #pixel values for the edges of the maze
+        rightedge = self.wspace//2 + ((self.squaresize+self.linewidth)*self.size[0]) + self.linewidth
+        botedge = self.hspace//2 + ((self.squaresize+self.linewidth)*self.size[1]) + self.linewidth
+        leftedge = self.wspace//2
+        topedge = self.hspace//2
+
+        #create the 4 sides of the maze, leaving gaps for maze ends.     _ _|
+        #without any gaps, the side borders form a pinwheel shape, i.e.   |_|_  for a square maze.
+        #                                                                 |
+        #top side:
+        currentpos = (0,0)
+        for endpos in self.upends:
+            nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), topedge)
+            self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            currentpos = (nextpos[0]+self.linewidth,0)
+        if currentpos[0] != rightedge:
+            self.walls.add(Wall(currentpos,(rightedge,topedge),self.bgcolor))
+        #right side:
+        currentpos = (rightedge,0)
+        for endpos in self.rightends:
+            nextpos = (self.screenrect.h, topedge + (self.squaresize+self.linewidth)*endpos)
+            self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            currentpos = (rightedge,nextpos[1]+self.linewidth)
+        if currentpos[1] != botedge:
+            self.walls.add(Wall(currentpos,(self.screenrect.w,botedge),self.bgcolor))
+        #these next two have an extra if to make sure an extraneous, 0 area wall isn't created
+        #bottom side:
+        currentpos = (leftedge,botedge)
+        for endpos in self.downends:
+            nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), self.screenrect.h)
+            if nextpos[0]-currentpos[0] != 0:
+                self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            currentpos = (nextpos[0]+self.linewidth,botedge)
+        self.walls.add(Wall(currentpos,(self.screenrect.h,self.screenrect.w),self.bgcolor))
+        #left side:
+        currentpos = (0,topedge)
+        for endpos in self.leftends:
+            nextpos = (leftedge, topedge + (self.squaresize+self.linewidth)*endpos)
+            if nextpos[1]-currentpos[1] != 0:
+                self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            currentpos = (0, nextpos[1] + self.linewidth)
+        self.walls.add(Wall(currentpos,(leftedge,self.screenrect.h),self.bgcolor))
+        
+        
+        
+            
+            
+
+        """       
         self.walls.add(Wall(0,0,self.wspace//2,
                             self.screenrect.h,self.bgcolor))#left boundary
         self.walls.add(Wall(((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,0,
@@ -228,11 +267,13 @@ class Maze():
                             self.screenrect.w-self.wspace//2,self.hspace//2,self.bgcolor))#top boundary
         self.walls.add(Wall(self.wspace//2,((self.squaresize+self.linewidth)*self.size[1] + self.linewidth)+self.hspace//2,
                             ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,self.screenrect.h,self.bgcolor))#bottom boundary
+        """
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 squarex = self.wspace//2+self.linewidth+(x*(self.squaresize+self.linewidth))
                 squarey = self.hspace//2+self.linewidth+(y*(self.squaresize+self.linewidth))
-                self.walls.add(Wall(squarex,squarey,self.squaresize,self.squaresize,self.bgcolor))
+                self.walls.add(Wall((squarex,squarey),(squarex+self.squaresize,squarey+self.squaresize),self.bgcolor))
+        print(len(self.walls))
                 
     def drawStarts(self,display):
         self.startlist = []
@@ -292,8 +333,8 @@ is_alive = False
 startupdating = False
 done = False
 
-testmaze = Maze(screen,(3,4),(),
-                (),((0,0),),((0,2,left),(0,1,left),(1,0,up),(3,3,down),(3,0,right),(1,3,down)),(),
+testmaze = Maze(screen,(4,4),(),
+                (),((2,2),),((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left)),(),
                 1/5,(0,70,205,255),(25,25,112,255), white)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
