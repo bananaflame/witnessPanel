@@ -12,19 +12,13 @@ right = 1
 down = 2
 left = 3
 
-class TraceStart(pygame.sprite.Sprite):
-    def __init__(self, maze, pos):
-        super().__init__()
+class TraceStart():
+    def __init__(self, maze, startpos):
         self.fullradius = int(maze.linewidth*1.15)
         self.color = maze.tracecolor
         self.currentradius = self.fullradius//3
         self.donegrowing = False
-        self.fade = 0
-        self.image = pygame.Surface([self.fullradius*2,self.fullradius*2])
-        self.image.fill(clear)
-        self.rect = self.image.get_rect()
-        self.rect.x = pos[0] - self.fullradius
-        self.rect.y = pos[1] - self.fullradius
+        self.pos = startpos
         
     def update(self):
         if not self.donegrowing:
@@ -34,123 +28,97 @@ class TraceStart(pygame.sprite.Sprite):
                 self.donegrowing = True
             
     def draw(self, display):
-        pygame.draw.circle(display, self.color,
-                                (self.rect.x+self.fullradius,self.rect.y+self.fullradius),
-                                self.currentradius)
+       pygame.draw.circle(display, self.color, self.pos, self.currentradius)
+        
 class TraceBody():
     pass
 
-class TraceHead(pygame.sprite.Sprite):
-    def __init__(self, maze, pos):
-        super().__init__()
+class TraceHead():
+    def __init__(self, maze, startpos):
         self.width = maze.linewidth
         self.xborder = maze.wspace//2
         self.yborder = maze.hspace//2
         self.mazesquaresize = maze.squaresize
         self.mazewalls = maze.walls
-        self.image = pygame.Surface([self.width,self.width])
         self.color = maze.tracecolor
-        self.fade = 0
-        self.initpos = pos
-        self.rect = self.image.get_rect()
-        self.rect.x = pos[0] - self.width//2# subtract half of width bc gridpos is pixel value for center of an intersection
-        self.rect.y = pos[1] - self.width//2
-        self.image.fill(clear)
+        self.pos = startpos
         
-
-    def update(self,):
+    def update(self):
         mousepos = pygame.mouse.get_pos()
-        diffx = mousepos[0] - (self.rect.x + self.width/2) #diff between center of line head and mouse, not top left corner
-        diffy = -mousepos[1] + (self.rect.y + self.width/2) #reversed bc display y-axis is flipped
+        diffx = mousepos[0] - self.pos[0] #diff between center of line head and mouse, not top left corner
+        diffy = -mousepos[1] + self.pos[1] #reversed bc display y-axis is flipped
         fractiontomove = 4
-        gridpos = [(self.rect.x - self.xborder)/(self.mazesquaresize+self.width),
-                   (self.rect.y - self.yborder)/(self.mazesquaresize+self.width)]
+        gridpos = [(self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
+                   (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)]
         if abs(diffy) > abs(diffx):#primary axis is up/down
             if gridpos[0].is_integer(): #trace is on grid column, can move up/down
-                if diffy > 2:
-                    self.tryMove(up,diffy/fractiontomove)
-                elif diffy < -2:
-                    self.tryMove(down,abs(diffy)/fractiontomove)
+                if diffy > 2:#up
+                    self.pos[1] -= math.ceil(diffy/fractiontomove)
+                elif diffy < -2:#down
+                    self.pos[1] += math.ceil(abs(diffy)/fractiontomove)
             else: #can't move up/down, try left/right
-                if diffx > 2:
-                    self.tryMove(right,diffx/fractiontomove)
-                elif diffx < -2:
-                    self.tryMove(left,abs(diffx)/fractiontomove)
-                elif abs(diffy) > self.mazesquaresize//5:#if cursor getting far away, check if can snap to intersection
-                    disttoisect = (self.rect.x - self.xborder)%(self.mazesquaresize+self.width)
+                if diffx > 2:#right
+                    self.pos[0] += math.ceil(diffx/fractiontomove)
+                elif diffx < -2:#left
+                    self.pos[0] -= math.ceil(abs(diffx)/fractiontomove)
+                
+                elif abs(diffy) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
+                    disttoisect = int((self.pos[0] - self.xborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
-                        self.tryMove(left,disttoisect)
+                        self.pos[0] -= disttoisect
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is 1 linewidth left of intersection
-                        self.tryMove(right,(self.mazesquaresize+self.width) - disttoisect)
+                        self.pos[0] += self.mazesquaresize + self.width - disttoisect
+                        
         else:#primary axis is left/right
             if gridpos[1].is_integer(): #trace is on grid row, can move up/down as long as no border in way
-                if diffx > 2:
-                    self.tryMove(right,diffx/fractiontomove)
-                elif diffx < -2:
-                    self.tryMove(left,abs(diffx)/fractiontomove)
+                if diffx > 2:#right
+                    self.pos[0] += math.ceil(diffx/fractiontomove)
+                elif diffx < -2:#left
+                    self.pos[0] -= math.ceil(abs(diffx)/fractiontomove)
             else: #can't move left/right, try up/down
-                if diffy > 2:
-                    self.tryMove(up,diffy/fractiontomove)
-                elif diffy < -2:
-                    self.tryMove(down,abs(diffy)/fractiontomove)
-                elif abs(diffx) > self.mazesquaresize//5:#if cursor getting far away, check if can snap to intersection
-                    disttoisect = (self.rect.y - self.yborder)%(self.mazesquaresize+self.width)
+                if diffy > 2:#up
+                    self.pos[1] -= math.ceil(diffy/fractiontomove)
+                elif diffy < -2:#down
+                    self.pos[1] += math.ceil(abs(diffy)/fractiontomove)
+                elif abs(diffx) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
+                    disttoisect = int((self.pos[1] - self.yborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth below intersection 
-                        self.tryMove(up,disttoisect)
+                        self.pos[1] -= disttoisect
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is one linewidth above intersection
-                        self.tryMove(down,(self.mazesquaresize+self.width) - disttoisect)
-        
+                        self.pos[1] += self.mazesquaresize+self.width - disttoisect
                         
     def tryMove(self,direction,dist_to_move):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
-        collisions = []
         if direction == up:
             for i in range(distance):
-                if not collisions:
-                    self.rect.y -= 1 #don't forget display y-axis is reverse
-                    collisions = pygame.sprite.spritecollide(self, self.mazewalls, False)
-                    for wall in collisions:
-                        self.rect.top = wall.rect.bottom
+                self.pos[1] -= 1 #don't forget display y-axis is reverse       
         elif direction == right:
             for i in range(distance):
-                if not collisions:
-                    self.rect.x += 1
-                    collisions = pygame.sprite.spritecollide(self, self.mazewalls, False)
-                    for wall in collisions:
-                        self.rect.right = wall.rect.left
+                self.pos[0] += 1
         elif direction == down:
             for i in range(distance):
-                if not collisions:
-                    self.rect.y += 1 #don't forget display y-axis is reverse
-                    collisions = pygame.sprite.spritecollide(self, self.mazewalls, False)
-                    for wall in collisions:
-                        self.rect.bottom = wall.rect.top
+                self.pos[1] += 1 #don't forget display y-axis is reverse
         elif direction == left:
             for i in range(distance):
-                if not collisions:
-                    self.rect.x -= 1
-                    collisions = pygame.sprite.spritecollide(self,self.mazewalls,False)
-                    for wall in collisions:
-                        self.rect.left = wall.rect.right
+                self.pos[0] -= 1
                         
     def draw(self,display):
-        pygame.draw.circle(display,self.color,(self.rect.x+self.width//2,self.rect.y+self.width//2),self.width//2)
+        pygame.draw.circle(display,self.color,self.pos,self.width//2)
 
-class Wall(pygame.sprite.Sprite):
+class Wall():
     def __init__(self,startpos,endpos,color):
-        super().__init__()
-        self.image = pygame.Surface([endpos[0]-startpos[0],endpos[1]-startpos[1]])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-        self.rect.x = startpos[0]
-        self.rect.y = startpos[1]
+        self.color = color
+        self.startpos = startpos
+        self.width = endpos[0]-startpos[0]
+        self.height = endpos[1]-startpos[1]
+    def draw(self,display):
+        pygame.draw.rect(display,self.color,(self.startpos,(self.width,self.height)))
         
 class Maze():
     def __init__(self, display, size, nullzones,
                  symbols, starts, ends, hexagons,
                  linefrac, bgcolor, gridcolor, tracecolor):
         self.size = size #tuple with (x,y)
-        self.nullzones = nullzones #see default above
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.starts = starts #list of starting point positions
         self.sortEnds(ends) #generates 4 lists of end points, one for each maze side, needed later
@@ -160,18 +128,24 @@ class Maze():
         self.gridcolor = gridcolor #color of grid lines
         self.tracecolor = tracecolor #color of trace
         self.grid = []
+
+        self.tracedisplay = pygame.Surface((display.get_width(),display.get_height()))
+        self.tracedisplay.set_colorkey(clear)#makes everything that's that color transparent
+        
         for y in range(size[0]):
             self.grid.append([])
             for x in range(size[1]):
                 self.grid[y].append(0)
+                
         self.generateWalls(display)
+        self.generateNullZones(nullzones)
         
     def printMaze(self):
         for i in self.grid:
             for j in i:
                 print(j, end=" ")
             print()
-
+            
     def sortEnds(self,ends):
         sortedends = sorted(ends, key=lambda end: end[2])#sorts all ends by direction value in third index
         self.upends = []
@@ -203,12 +177,12 @@ class Maze():
             self.squaresize = self.screenrect.h // (self.size[1] + (self.linefrac*self.size[1]) + 5*self.linefrac)
         self.squaresize = int(self.squaresize)
         self.linewidth = int(self.squaresize*self.linefrac)#I need the pixel value of self.linewidth more after this, so this will be useful
-        if self.linewidth % 2 == 1:#make the line width always be even so that the trace head circle will fill it completely
-            self.squaresize -= 1
+        while self.linewidth % 2 == 1:#make the line width always be even so that the trace head circle will fill it completely
+            self.squaresize -= 1 #while loop because subtracting 1 from square size doesn't always make linewidth even
             self.linewidth = int(self.squaresize*self.linefrac)
         self.wspace = int(self.screenrect.w - ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth))
         self.hspace = int(self.screenrect.h - ((self.squaresize+self.linewidth)*self.size[1] + self.linewidth))
-        self.walls = pygame.sprite.Group()
+        self.walls = []
 
         #pixel values for the edges of the maze
         rightedge = self.wspace//2 + ((self.squaresize+self.linewidth)*self.size[0]) + self.linewidth
@@ -223,65 +197,79 @@ class Maze():
         currentpos = (0,0)
         for endpos in self.upends:
             nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), topedge)
-            self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (nextpos[0]+self.linewidth,0)
         if currentpos[0] != rightedge:
-            self.walls.add(Wall(currentpos,(rightedge,topedge),self.bgcolor))
+            self.walls.append(Wall(currentpos,(rightedge,topedge),self.bgcolor))
         #right side:
         currentpos = (rightedge,0)
         for endpos in self.rightends:
             nextpos = (self.screenrect.h, topedge + (self.squaresize+self.linewidth)*endpos)
-            self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+            self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (rightedge,nextpos[1]+self.linewidth)
         if currentpos[1] != botedge:
-            self.walls.add(Wall(currentpos,(self.screenrect.w,botedge),self.bgcolor))
+            self.walls.append(Wall(currentpos,(self.screenrect.w,botedge),self.bgcolor))
         #these next two have an extra if to make sure an extraneous, 0 area wall isn't created
         #bottom side:
         currentpos = (leftedge,botedge)
         for endpos in self.downends:
             nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), self.screenrect.h)
             if nextpos[0]-currentpos[0] != 0:
-                self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+                self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (nextpos[0]+self.linewidth,botedge)
-        self.walls.add(Wall(currentpos,(self.screenrect.h,self.screenrect.w),self.bgcolor))
+        self.walls.append(Wall(currentpos,(self.screenrect.h,self.screenrect.w),self.bgcolor))
         #left side:
         currentpos = (0,topedge)
         for endpos in self.leftends:
             nextpos = (leftedge, topedge + (self.squaresize+self.linewidth)*endpos)
             if nextpos[1]-currentpos[1] != 0:
-                self.walls.add(Wall(currentpos,nextpos,self.bgcolor))
+                self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (0, nextpos[1] + self.linewidth)
-        self.walls.add(Wall(currentpos,(leftedge,self.screenrect.h),self.bgcolor))
+        self.walls.append(Wall(currentpos,(leftedge,self.screenrect.h),self.bgcolor))
         
-        
-        
-            
-            
-
         """       
-        self.walls.add(Wall(0,0,self.wspace//2,
+        self.walls.append(Wall(0,0,self.wspace//2,
                             self.screenrect.h,self.bgcolor))#left boundary
-        self.walls.add(Wall(((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,0,
+        self.walls.append(Wall(((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,0,
                             self.screenrect.w,self.screenrect.h,self.bgcolor))#right boundary
-        self.walls.add(Wall(self.wspace//2,0,
+        self.walls.append(Wall(self.wspace//2,0,
                             self.screenrect.w-self.wspace//2,self.hspace//2,self.bgcolor))#top boundary
-        self.walls.add(Wall(self.wspace//2,((self.squaresize+self.linewidth)*self.size[1] + self.linewidth)+self.hspace//2,
+        self.walls.append(Wall(self.wspace//2,((self.squaresize+self.linewidth)*self.size[1] + self.linewidth)+self.hspace//2,
                             ((self.squaresize+self.linewidth)*self.size[0] + self.linewidth)+ self.wspace//2,self.screenrect.h,self.bgcolor))#bottom boundary
         """
-        for y in range(self.size[1]):
+        
+        for y in range(self.size[1]): #draw grid squares
             for x in range(self.size[0]):
                 squarex = self.wspace//2+self.linewidth+(x*(self.squaresize+self.linewidth))
                 squarey = self.hspace//2+self.linewidth+(y*(self.squaresize+self.linewidth))
-                self.walls.add(Wall((squarex,squarey),(squarex+self.squaresize,squarey+self.squaresize),self.bgcolor))
-        print(len(self.walls))
-                
-    def drawStarts(self,display):
-        self.startlist = []
-        for startpos in self.starts:
-            pygame.draw.circle(display,self.gridcolor,
-                                (self.wspace//2 + self.linewidth//2 + startpos[0]*(self.squaresize+self.linewidth),
-				self.hspace//2 + self.linewidth//2 + startpos[1]*(self.squaresize+self.linewidth)),
-                                int(self.linewidth*1.15))
+                self.walls.append(Wall((squarex,squarey),(squarex + self.squaresize,squarey + self.squaresize),self.bgcolor))
+
+    def generateNullZones(self,nullcoords):
+        self.upwalls = [] #these four lists will store the top, right, bottom, and left edges of the nullzones, respectively, in pixel values
+        self.rightwalls = [] #they will be used to calculate trace head nullzone collisions as well as generate the nullzone wall objects.
+        self.downwalls = []
+        self.leftwalls = []
+        for row in range(self.size[1]+1):# +1 for both of these because self.size is the size in terms of squares, not grid lines
+            self.rightwalls.append([])
+            self.leftwalls.append([])
+        for column in range(self.size[0]+1):
+            self.upwalls.append([])
+            self.downwalls.append([])
+        for nullzone in nullcoords:
+            if nullzone[1][0] - nullzone[0][0] == 1: #horizontal
+                self.leftwalls[nullzone[0][1]].append(int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize))
+                self.rightwalls[nullzone[0][1]].append(int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize))
+            elif nullzone[1][1] - nullzone[0][1] == 1: #vertical
+                self.upwalls[nullzone[0][0]].append(int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize))
+                self.downwalls[nullzone[0][0]].append(int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize))
+        for rownum in range(len(self.leftwalls)):#create horizontal null zone walls
+            for wallnum in range(len(self.leftwalls[rownum])):
+                self.walls.append(Wall((self.leftwalls[rownum][wallnum],self.hspace//2+(self.squaresize+self.linewidth)*rownum),
+                                    (self.rightwalls[rownum][wallnum],self.hspace//2+(self.squaresize+self.linewidth)*rownum+self.linewidth),self.bgcolor))
+        for columnnum in range(len(self.upwalls)):
+            for wallnum in range(len(self.upwalls[columnnum])):
+                self.walls.append(Wall((self.wspace//2+(self.squaresize+self.linewidth)*columnnum,self.upwalls[columnnum][wallnum]),
+                                    (self.wspace//2+(self.squaresize+self.linewidth)*columnnum+self.linewidth,self.downwalls[columnnum][wallnum]),self.bgcolor))
             
     def tryStart(self,mousepos):
         mgridpos = [(mousepos[0] - (self.wspace//2) - self.linewidth//2)/(self.squaresize+self.linewidth),
@@ -289,38 +277,48 @@ class Maze():
         startradius = (self.linewidth*1.1)/(self.squaresize + self.linewidth)
         for start in self.starts:
             if abs(start[0] - mgridpos[0]) < startradius and abs(start[1] - mgridpos[1]) < startradius:
-                self.tracelist = self.maketrace((self.wspace//2 + self.linewidth//2 + start[0]*(self.squaresize+self.linewidth),
-                                        self.hspace//2 + self.linewidth//2 + start[1]*(self.squaresize+self.linewidth)))
+                self.makeTrace([self.wspace//2 + self.linewidth//2 + start[0]*(self.squaresize+self.linewidth),
+                                self.hspace//2 + self.linewidth//2 + start[1]*(self.squaresize+self.linewidth)])
                 return True
             
-    def maketrace(self,gridpos):
-        self.tracegroup = pygame.sprite.Group()
-        self.tracegroup.fade = 0
+    def makeTrace(self,gridpos):
         #add tracebody in here later
-        self.tracegroup.add(TraceStart(self,gridpos),TraceHead(self,gridpos))
+        self.tracegroup = [TraceHead(self,list(gridpos)),TraceStart(self,list(gridpos))]
+        #list() makes temp copies of gridpos to pass
+        #otherwise these will point to the same list in memory and create problems
+        self.tracefade = 0
         
     def update(self,is_alive):
         if is_alive:
             #update maze flashing symbols when wrong
-            self.tracegroup.update()
-        elif self.tracegroup.fade < 256:
-            self.tracegroup.fade += 2
+            for section in self.tracegroup:
+                section.update()
+        elif self.tracefade < 256:
+            self.tracefade += 2
             
         
     def drawMaze(self, display):
-        self.walls.draw(display)
+        for wall in self.walls:
+            wall.draw(display)
         self.drawStarts(display)
         
+    def drawStarts(self,display):
+        self.startlist = []
+        for startpos in self.starts:
+            pygame.draw.circle(display,self.gridcolor,
+                                (self.wspace//2 + self.linewidth//2 + startpos[0]*(self.squaresize+self.linewidth),
+				self.hspace//2 + self.linewidth//2 + startpos[1]*(self.squaresize+self.linewidth)),
+                                int(self.linewidth*1.15))
+        
+            
     def drawTrace(self,display):
-        tempdisplay = pygame.Surface((display.get_width(),display.get_height()))
-        tempdisplay.set_colorkey(clear)#makes everything that's that color transparent
-        tempdisplay.fill(clear)
+        self.tracedisplay.fill(clear)
         for section in self.tracegroup:
-            section.draw(tempdisplay)
+            section.draw(self.tracedisplay)
         #all the sections of the trace need to be faded as one image, otherwise
         #we get issues with transparent surfaces overlapping and being more opaque
-        tempdisplay.set_alpha(256 - self.tracegroup.fade)
-        display.blit(tempdisplay,(0,0))
+        self.tracedisplay.set_alpha(256 - self.tracefade)
+        display.blit(self.tracedisplay,(0,0))
         
 
 
@@ -333,11 +331,22 @@ is_alive = False
 startupdating = False
 done = False
 
-testmaze = Maze(screen,(4,4),(),
-                (),((2,2),),((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left)),(),
-                1/5,(0,70,205,255),(25,25,112,255), white)
+display = screen
+size = (4,5)
+nullzones = (((1,1),(2,1),1/2),((3,3),(4,3),1),((0,4),(1,4),1/3),((1,1),(1,2),1/2),((2,2),(2,3),1)) #nullzone coordinate pairs must be left to right or up to down
+symbols = ()
+starts = ((2,3),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
+ends =((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
+hexagons = ()
+linefrac = 1/5
+bgcolor = (0,70,205,255)
+gridcolor = (25,25,112,255)
+tracecolor = white
+
+testmaze = Maze(display,size,nullzones,symbols,starts,ends,hexagons,linefrac,bgcolor,gridcolor,tracecolor)
+
 
 while not done:
     pygame.event.clear()#won't need to get events from event queue, chuck'em
