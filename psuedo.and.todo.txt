@@ -8,6 +8,9 @@ idea: line start is circle that grows bigger, created in constructor of Trace *a
    one solution to this might be to have an invisible sprite associated with the trace start that only counts for collisions if
    the trace has gone through one intersection, gotta figure out how to do that though
 
+idea: to test if line on a finish point, check if either gridpos is further than maze size
+idea: add nullzone for trace start once line goes over another intersection
+
 To Do:
 add finish functionality to maze data
 add intersection sprites for collisions at maze intersections, as well as hexagon sprites (wait, maybe just hexagon sprites?)

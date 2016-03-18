@@ -12,82 +12,78 @@ right = 1
 down = 2
 left = 3
 
-class TraceStart():
+class Trace():
     def __init__(self, maze, startpos):
+        #starting circle
         self.fullradius = int(maze.linewidth*1.15)
-        self.color = maze.tracecolor
-        self.currentradius = self.fullradius//3
+        self.currentradius = self.fullradius//3#start circle starts part of the way filled, as it does in game
         self.donegrowing = False
-        self.pos = startpos
-        
-    def update(self):
-        if not self.donegrowing:
-            if self.currentradius < self.fullradius:
-                self.currentradius += math.ceil((self.fullradius - self.currentradius)/4)
-            else:
-                self.donegrowing = True
-            
-    def draw(self, display):
-       pygame.draw.circle(display, self.color, self.pos, self.currentradius)
-        
-class TraceBody():
-    pass
 
-class TraceHead():
-    def __init__(self, maze, startpos):
         self.width = maze.linewidth
         self.xborder = maze.wspace//2
         self.yborder = maze.hspace//2
         self.mazesquaresize = maze.squaresize
         self.mazewalls = maze.walls
         self.color = maze.tracecolor
+        self.startpos = (int(startpos[0]),int(startpos[1]))
         self.pos = startpos
+        self.path = []
+        self.currcoords = []
         
     def update(self):
+        #starting circle expansion
+        if not self.donegrowing:
+            if self.currentradius < self.fullradius:
+                self.currentradius += math.ceil((self.fullradius - self.currentradius)/5)#dictates speed of start circle filling
+            else:
+                self.donegrowing = True
+                
+        #trace head movement
         mousepos = pygame.mouse.get_pos()
         diffx = mousepos[0] - self.pos[0] #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + self.pos[1] #reversed bc display y-axis is flipped
         fractiontomove = 4
         gridpos = [(self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
                    (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)]
+        diffmargin = 2
         if abs(diffy) > abs(diffx):#primary axis is up/down
             if gridpos[0].is_integer(): #trace is on grid column, can move up/down
-                if diffy > 2:#up
-                    self.pos[1] -= math.ceil(diffy/fractiontomove)
-                elif diffy < -2:#down
-                    self.pos[1] += math.ceil(abs(diffy)/fractiontomove)
+                if diffy > diffmargin:#up
+                    self.tryMove(diffy/fractiontomove, up)
+                elif diffy < -diffmargin:#down
+                    self.tryMove(abs(diffy)/fractiontomove, down)
             else: #can't move up/down, try left/right
-                if diffx > 2:#right
-                    self.pos[0] += math.ceil(diffx/fractiontomove)
-                elif diffx < -2:#left
-                    self.pos[0] -= math.ceil(abs(diffx)/fractiontomove)
+                if diffx > diffmargin:#right
+                    self.tryMove(diffx/fractiontomove, right)
+                elif diffx < -diffmargin:#left
+                    self.tryMove(abs(diffx)/fractiontomove, left)
                 
                 elif abs(diffy) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
                     disttoisect = int((self.pos[0] - self.xborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
-                        self.pos[0] -= disttoisect
+                        self.tryMove(disttoisect, left)
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is 1 linewidth left of intersection
-                        self.pos[0] += self.mazesquaresize + self.width - disttoisect
+                        self.tryMove(self.mazesquaresize + self.width - disttoisect, right)
                         
         else:#primary axis is left/right
             if gridpos[1].is_integer(): #trace is on grid row, can move up/down as long as no border in way
-                if diffx > 2:#right
-                    self.pos[0] += math.ceil(diffx/fractiontomove)
-                elif diffx < -2:#left
-                    self.pos[0] -= math.ceil(abs(diffx)/fractiontomove)
+                if diffx > diffmargin:#right
+                    self.tryMove(diffx/fractiontomove, right)
+                elif diffx < -diffmargin:#left
+                    self.tryMove(abs(diffx)/fractiontomove, left)
             else: #can't move left/right, try up/down
-                if diffy > 2:#up
-                    self.pos[1] -= math.ceil(diffy/fractiontomove)
-                elif diffy < -2:#down
-                    self.pos[1] += math.ceil(abs(diffy)/fractiontomove)
+                if diffy > diffmargin:#up
+                    self.tryMove(diffy/fractiontomove, up)
+                elif diffy < -diffmargin:#down
+                    self.tryMove(abs(diffy)/fractiontomove, down)
                 elif abs(diffx) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
                     disttoisect = int((self.pos[1] - self.yborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth below intersection 
-                        self.pos[1] -= disttoisect
+                        self.tryMove(disttoisect,up)
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is one linewidth above intersection
-                        self.pos[1] += self.mazesquaresize+self.width - disttoisect
+                        self.tryMove(self.mazesquaresize+self.width - disttoisect, down)
                         
-    def tryMove(self,direction,dist_to_move):
+    def tryMove(self,dist_to_move,direction):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
         if direction == up:
             for i in range(distance):
@@ -103,6 +99,7 @@ class TraceHead():
                 self.pos[0] -= 1
                         
     def draw(self,display):
+        pygame.draw.circle(display, self.color, self.startpos, self.currentradius)
         pygame.draw.circle(display,self.color,self.pos,self.width//2)
 
 class Wall():
@@ -139,6 +136,7 @@ class Maze():
                 
         self.generateWalls(display)
         self.generateNullZones(nullzones)
+        self.generateMazeImage(display)
         
     def printMaze(self):
         for i in self.grid:
@@ -185,6 +183,9 @@ class Maze():
         self.walls = []
 
         #pixel values for the edges of the maze
+        print (self.wspace//2)
+        print((self.squaresize+self.linewidth)*self.size[0])
+        print(self.linewidth)
         rightedge = self.wspace//2 + ((self.squaresize+self.linewidth)*self.size[0]) + self.linewidth
         botedge = self.hspace//2 + ((self.squaresize+self.linewidth)*self.size[1]) + self.linewidth
         leftedge = self.wspace//2
@@ -203,8 +204,9 @@ class Maze():
             self.walls.append(Wall(currentpos,(rightedge,topedge),self.bgcolor))
         #right side:
         currentpos = (rightedge,0)
+        print(currentpos)
         for endpos in self.rightends:
-            nextpos = (self.screenrect.h, topedge + (self.squaresize+self.linewidth)*endpos)
+            nextpos = (self.screenrect.w, topedge + (self.squaresize+self.linewidth)*endpos)
             self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (rightedge,nextpos[1]+self.linewidth)
         if currentpos[1] != botedge:
@@ -213,11 +215,11 @@ class Maze():
         #bottom side:
         currentpos = (leftedge,botedge)
         for endpos in self.downends:
-            nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), self.screenrect.h)
+            nextpos = (leftedge + ((self.squaresize+self.linewidth)*endpos), self.screenrect.w)
             if nextpos[0]-currentpos[0] != 0:
                 self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
             currentpos = (nextpos[0]+self.linewidth,botedge)
-        self.walls.append(Wall(currentpos,(self.screenrect.h,self.screenrect.w),self.bgcolor))
+        self.walls.append(Wall(currentpos,(self.screenrect.w,self.screenrect.h),self.bgcolor))
         #left side:
         currentpos = (0,topedge)
         for endpos in self.leftends:
@@ -283,7 +285,7 @@ class Maze():
             
     def makeTrace(self,gridpos):
         #add tracebody in here later
-        self.tracegroup = [TraceHead(self,list(gridpos)),TraceStart(self,list(gridpos))]
+        self.trace = Trace(self,gridpos)
         #list() makes temp copies of gridpos to pass
         #otherwise these will point to the same list in memory and create problems
         self.tracefade = 0
@@ -291,16 +293,19 @@ class Maze():
     def update(self,is_alive):
         if is_alive:
             #update maze flashing symbols when wrong
-            for section in self.tracegroup:
-                section.update()
+            self.trace.update()
         elif self.tracefade < 256:
             self.tracefade += 2
             
+    def generateMazeImage(self,display):
+        self.mazeimage = display.copy()
+        self.mazeimage.fill(self.gridcolor)
+        for wall in self.walls:
+            wall.draw(self.mazeimage)
+        self.drawStarts(self.mazeimage)
         
     def drawMaze(self, display):
-        for wall in self.walls:
-            wall.draw(display)
-        self.drawStarts(display)
+        display.blit(self.mazeimage,(0,0))
         
     def drawStarts(self,display):
         self.startlist = []
@@ -313,8 +318,7 @@ class Maze():
             
     def drawTrace(self,display):
         self.tracedisplay.fill(clear)
-        for section in self.tracegroup:
-            section.draw(self.tracedisplay)
+        self.trace.draw(self.tracedisplay)
         #all the sections of the trace need to be faded as one image, otherwise
         #we get issues with transparent surfaces overlapping and being more opaque
         self.tracedisplay.set_alpha(256 - self.tracefade)
@@ -323,7 +327,7 @@ class Maze():
 
 
 pygame.init()
-displaysize = [800,800]
+displaysize = [1000,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -346,7 +350,6 @@ gridcolor = (25,25,112,255)
 tracecolor = white
 
 testmaze = Maze(display,size,nullzones,symbols,starts,ends,hexagons,linefrac,bgcolor,gridcolor,tracecolor)
-
 
 while not done:
     pygame.event.clear()#won't need to get events from event queue, chuck'em
