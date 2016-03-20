@@ -18,17 +18,24 @@ class Trace():
         self.fullradius = int(maze.linewidth*1.15)
         self.currentradius = self.fullradius//3#start circle starts part of the way filled, as it does in game
         self.donegrowing = False
-
         self.width = maze.linewidth
+        self.radius = self.width/2
         self.xborder = maze.wspace//2
         self.yborder = maze.hspace//2
+        self.mazebarriers = maze.barriers
         self.mazesquaresize = maze.squaresize
-        self.mazewalls = maze.walls
+        self.gridsquaresize = maze.squaresize+maze.linewidth
         self.color = maze.tracecolor
-        self.startpos = (int(startpos[0]),int(startpos[1]))
         self.pos = startpos
-        self.path = []
-        self.currcoords = []
+        self.startpos = tuple(startpos)
+        self.path = [((self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
+                            (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)),] #starting grid position for path
+        self.pixelpath = [self.startpos,]
+        self.isonrow = True
+        self.isoncolumn = True
+        self.xtravelled = 0
+        self.ytravelled = 0
+
         
     def update(self):
         #starting circle expansion
@@ -43,21 +50,24 @@ class Trace():
         diffx = mousepos[0] - self.pos[0] #diff between center of line head and mouse, not top left corner
         diffy = -mousepos[1] + self.pos[1] #reversed bc display y-axis is flipped
         fractiontomove = 4
-        gridpos = [(self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
-                   (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)]
-        diffmargin = 2
+        diffmargin = 2#prevents being in between pixels with cursor from making trace head oscillate 1 pixel
+
+        self.ysquarestravelled = self.ytravelled/self.gridsquaresize
+        self.xsquarestravelled = self.xtravelled/self.gridsquaresize
+        
         if abs(diffy) > abs(diffx):#primary axis is up/down
-            if gridpos[0].is_integer(): #trace is on grid column, can move up/down
+            
+            if self.xsquarestravelled.is_integer(): #trace is on grid column, can move up/down
                 if diffy > diffmargin:#up
                     self.tryMove(diffy/fractiontomove, up)
                 elif diffy < -diffmargin:#down
                     self.tryMove(abs(diffy)/fractiontomove, down)
-            else: #can't move up/down, try left/right
+            elif self.ysquarestravelled.is_integer(): #can't move up/down, try left/right
                 if diffx > diffmargin:#right
                     self.tryMove(diffx/fractiontomove, right)
                 elif diffx < -diffmargin:#left
                     self.tryMove(abs(diffx)/fractiontomove, left)
-                
+                    
                 elif abs(diffy) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
                     disttoisect = int((self.pos[0] - self.xborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
@@ -65,17 +75,20 @@ class Trace():
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is 1 linewidth left of intersection
                         self.tryMove(self.mazesquaresize + self.width - disttoisect, right)
                         
+                        
         else:#primary axis is left/right
-            if gridpos[1].is_integer(): #trace is on grid row, can move up/down as long as no border in way
+            
+            if self.ysquarestravelled.is_integer(): #trace is on grid row, can move up/down as long as no border in way
                 if diffx > diffmargin:#right
                     self.tryMove(diffx/fractiontomove, right)
                 elif diffx < -diffmargin:#left
                     self.tryMove(abs(diffx)/fractiontomove, left)
-            else: #can't move left/right, try up/down
+            elif self.xsquarestravelled.is_integer(): #can't move left/right, try up/down
                 if diffy > diffmargin:#up
                     self.tryMove(diffy/fractiontomove, up)
                 elif diffy < -diffmargin:#down
                     self.tryMove(abs(diffy)/fractiontomove, down)
+                
                 elif abs(diffx) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
                     disttoisect = int((self.pos[1] - self.yborder - self.width/2)%(self.mazesquaresize+self.width))
                     if disttoisect <= self.width:#trace is 1 linewidth below intersection 
@@ -83,24 +96,98 @@ class Trace():
                     elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is one linewidth above intersection
                         self.tryMove(self.mazesquaresize+self.width - disttoisect, down)
                         
+                        
     def tryMove(self,dist_to_move,direction):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
+        
+        #all pixelpath statements need revision!!
+        
         if direction == up:
             for i in range(distance):
-                self.pos[1] -= 1 #don't forget display y-axis is reverse       
-        elif direction == right:
-            for i in range(distance):
-                self.pos[0] += 1
+                if self.ysquarestravelled.is_integer():
+                    if len(self.path) == 0:#line is beginning
+                        pass
+                    elif self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending and coords to be added are not redundant
+                        self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
+                        self.pixelpath.append(tuple(self.pos))
+                    if len(self.path) > 1 and self.path[0][0]+self.ysquarestravelled > self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
+                        self.path.pop()
+                        self.pixelpath.pop()
+                    self.currentbarrier = self.mazebarriers[int(self.path[-1][1])][int(self.path[-1][0])][up]
+                if self.pos[1] - self.radius != self.currentbarrier:
+                    self.pos[1] -= 1
+                    self.ytravelled -= 1
+                    self.ysquarestravelled = self.ytravelled/self.gridsquaresize
+                else:
+                    return
+                
         elif direction == down:
             for i in range(distance):
-                self.pos[1] += 1 #don't forget display y-axis is reverse
+                if self.ysquarestravelled.is_integer():
+                    if len(self.path) == 0:#line is beginning
+                        pass
+                    elif self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
+                        self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
+                        self.pixelpath.append(tuple(self.pos))
+                    if len(self.path) > 1 and self.path[0][0]+self.ysquarestravelled < self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
+                        self.path.pop()
+                        self.pixelpath.pop()
+                    self.currentbarrier = self.mazebarriers[int(self.path[-1][1])][int(self.path[-1][0])][down]
+                if self.pos[1] + self.radius != self.currentbarrier:
+                    self.pos[1] += 1
+                    self.ytravelled += 1
+                    self.ysquarestravelled = self.ytravelled/self.gridsquaresize
+                else:
+                    return
+                
+                
+        elif direction == right:
+            for i in range(distance):
+                if self.xsquarestravelled.is_integer():
+                    if len(self.path) == 0:#line is beginning
+                        pass
+                    elif self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
+                        self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
+                        self.pixelpath.append(tuple(self.pos))
+                    if len(self.path) > 1 and self.path[0][0]+self.xsquarestravelled < self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
+                        self.path.pop()
+                        self.pixelpath.pop()
+                    self.currentbarrier = self.mazebarriers[int(self.path[-1][1])][int(self.path[-1][0])][right]
+                if self.pos[0] + self.radius != self.currentbarrier:
+                    self.pos[0] += 1
+                    self.xtravelled += 1
+                    self.xsquarestravelled = self.xtravelled/self.gridsquaresize
+                else:
+                    return
+                
         elif direction == left:
             for i in range(distance):
-                self.pos[0] -= 1
-                        
+                if self.xsquarestravelled.is_integer():
+                    if len(self.path) == 0:#line is beginning
+                        pass
+                    elif self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
+                        self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
+                        self.pixelpath.append(tuple(self.pos))
+                    if len(self.path) > 1 and self.path[0][0]+self.xsquarestravelled > self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
+                        self.path.pop()
+                        self.pixelpath.pop()
+                    self.currentbarrier = self.mazebarriers[int(self.path[-1][1])][int(self.path[-1][0])][left]
+                if self.pos[0] - self.radius != self.currentbarrier:
+                    self.pos[0] -= 1
+                    self.xtravelled -= 1
+                    self.xsquarestravelled = self.xtravelled/self.gridsquaresize
+                else:
+                    return
+        
     def draw(self,display):
         pygame.draw.circle(display, self.color, self.startpos, self.currentradius)
+        
+        self.pixelpath.append((self.pos[0],self.pos[1]))
+        pygame.draw.lines(display,self.color,False,self.pixelpath,self.width)
+        self.pixelpath.pop()
+        
         pygame.draw.circle(display,self.color,self.pos,self.width//2)
+
 
 class Wall():
     def __init__(self,startpos,endpos,color):
@@ -129,10 +216,10 @@ class Maze():
         self.tracedisplay = pygame.Surface((display.get_width(),display.get_height()))
         self.tracedisplay.set_colorkey(clear)#makes everything that's that color transparent
         
-        for y in range(size[0]):
+        for y in range(size[1]):
             self.grid.append([])
-            for x in range(size[1]):
-                self.grid[y].append(0)
+            for x in range(size[0]):
+                self.grid[y].append(None)
                 
         self.generateWalls(display)
         self.generateNullZones(nullzones)
@@ -183,9 +270,6 @@ class Maze():
         self.walls = []
 
         #pixel values for the edges of the maze
-        print (self.wspace//2)
-        print((self.squaresize+self.linewidth)*self.size[0])
-        print(self.linewidth)
         rightedge = self.wspace//2 + ((self.squaresize+self.linewidth)*self.size[0]) + self.linewidth
         botedge = self.hspace//2 + ((self.squaresize+self.linewidth)*self.size[1]) + self.linewidth
         leftedge = self.wspace//2
@@ -204,7 +288,6 @@ class Maze():
             self.walls.append(Wall(currentpos,(rightedge,topedge),self.bgcolor))
         #right side:
         currentpos = (rightedge,0)
-        print(currentpos)
         for endpos in self.rightends:
             nextpos = (self.screenrect.w, topedge + (self.squaresize+self.linewidth)*endpos)
             self.walls.append(Wall(currentpos,nextpos,self.bgcolor))
@@ -247,31 +330,28 @@ class Maze():
                 self.walls.append(Wall((squarex,squarey),(squarex + self.squaresize,squarey + self.squaresize),self.bgcolor))
 
     def generateNullZones(self,nullcoords):
-        self.upwalls = [] #these four lists will store the top, right, bottom, and left edges of the nullzones, respectively, in pixel values
-        self.rightwalls = [] #they will be used to calculate trace head nullzone collisions as well as generate the nullzone wall objects.
-        self.downwalls = []
-        self.leftwalls = []
-        for row in range(self.size[1]+1):# +1 for both of these because self.size is the size in terms of squares, not grid lines
-            self.rightwalls.append([])
-            self.leftwalls.append([])
-        for column in range(self.size[0]+1):
-            self.upwalls.append([])
-            self.downwalls.append([])
+        self.barriers = []
+        for row in range(self.size[1]+1):#size + 1 because size describes the number of squares in the maze, not num of grid intersections
+            self.barriers.append([])
+            for column in range(self.size[0]+1):
+                self.barriers[row].append([None,None,None,None])
+        #self.barriers will store, for each intersection in the maze, the pixel position of the barriers, should they exist, in each of the 4 directions.
+        #these will be used to calculate trace head nullzone collisions as well as represent the barriers graphically.
         for nullzone in nullcoords:
             if nullzone[1][0] - nullzone[0][0] == 1: #horizontal
-                self.leftwalls[nullzone[0][1]].append(int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize))
-                self.rightwalls[nullzone[0][1]].append(int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize))
+                barrierleft = int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                barrierright = int(self.wspace/2 + nullzone[0][0]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                self.barriers[nullzone[0][1]][nullzone[0][0]][right] = barrierleft
+                self.barriers[nullzone[1][1]][nullzone[1][0]][left] = barrierright
+                self.walls.append(Wall((barrierleft,(self.hspace//2+(self.squaresize+self.linewidth)*nullzone[0][1])),
+                                       (barrierright,self.hspace//2+(self.squaresize+self.linewidth)*nullzone[0][1]+self.linewidth),
+                                        self.bgcolor))
             elif nullzone[1][1] - nullzone[0][1] == 1: #vertical
-                self.upwalls[nullzone[0][0]].append(int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize))
-                self.downwalls[nullzone[0][0]].append(int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize))
-        for rownum in range(len(self.leftwalls)):#create horizontal null zone walls
-            for wallnum in range(len(self.leftwalls[rownum])):
-                self.walls.append(Wall((self.leftwalls[rownum][wallnum],self.hspace//2+(self.squaresize+self.linewidth)*rownum),
-                                    (self.rightwalls[rownum][wallnum],self.hspace//2+(self.squaresize+self.linewidth)*rownum+self.linewidth),self.bgcolor))
-        for columnnum in range(len(self.upwalls)):
-            for wallnum in range(len(self.upwalls[columnnum])):
-                self.walls.append(Wall((self.wspace//2+(self.squaresize+self.linewidth)*columnnum,self.upwalls[columnnum][wallnum]),
-                                    (self.wspace//2+(self.squaresize+self.linewidth)*columnnum+self.linewidth,self.downwalls[columnnum][wallnum]),self.bgcolor))
+                barriertop = int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                barrierbot = int(self.hspace/2 + nullzone[0][1]*(self.squaresize+self.linewidth) + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                self.barriers[nullzone[0][1]][nullzone[0][0]][down] = barriertop
+                self.barriers[nullzone[1][1]][nullzone[1][0]][up] = barrierbot
+                self.walls.append(Wall((self.wspace//2+(self.squaresize+self.linewidth)*nullzone[0][0],barriertop),(self.wspace//2+(self.squaresize+self.linewidth)*nullzone[0][0]+self.linewidth,barrierbot),self.bgcolor))
             
     def tryStart(self,mousepos):
         mgridpos = [(mousepos[0] - (self.wspace//2) - self.linewidth//2)/(self.squaresize+self.linewidth),
@@ -327,7 +407,7 @@ class Maze():
 
 
 pygame.init()
-displaysize = [1000,800]
+displaysize = [700,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -336,13 +416,13 @@ startupdating = False
 done = False
 
 display = screen
-size = (4,5)
-nullzones = (((1,1),(2,1),1/2),((3,3),(4,3),1),((0,4),(1,4),1/3),((1,1),(1,2),1/2),((2,2),(2,3),1)) #nullzone coordinate pairs must be left to right or up to down
+size = (3,3)
+nullzones = (((2,0),(2,1),2/5),)#(((1,1),(2,1),1/2),((3,3),(4,3),1),((0,4),(1,4),1/3),((1,1),(1,2),1/2),((2,2),(2,3),1)) #nullzone coordinate pairs must be left to right or up to down
 symbols = ()
-starts = ((2,3),)
+starts = ((2,2),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends =((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
+ends = ()#((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
 hexagons = ()
 linefrac = 1/5
 bgcolor = (0,70,205,255)
