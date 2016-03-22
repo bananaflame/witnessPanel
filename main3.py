@@ -30,7 +30,7 @@ class Trace():
         self.startpos = tuple(startpos)
         self.path = [((self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
                             (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)),] #starting grid position for path
-        self.pixelpath = [self.startpos,]
+        self.pixelpath = [self.startpos]
         self.isonrow = True
         self.isoncolumn = True
         self.xtravelled = 0
@@ -99,8 +99,6 @@ class Trace():
                         
     def tryMove(self,dist_to_move,direction):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
-        
-        #all pixelpath statements need revision!!
         
         if direction == up:
             for i in range(distance):
@@ -181,12 +179,12 @@ class Trace():
         
     def draw(self,display):
         pygame.draw.circle(display, self.color, self.startpos, self.currentradius)
-        
-        self.pixelpath.append((self.pos[0],self.pos[1]))
-        pygame.draw.lines(display,self.color,False,self.pixelpath,self.width)
+        self.pixelpath.append(self.pos)
+        for coord in range(len(self.pixelpath)-1):
+            pygame.draw.line(display,self.color,(self.pixelpath[coord][0]-1,self.pixelpath[coord][1]-1),(self.pixelpath[coord+1][0]-1,self.pixelpath[coord+1][1]-1),self.width)
+            pygame.draw.circle(display,self.color,self.pixelpath[coord],int(self.radius))
+        pygame.draw.circle(display,self.color,self.pos,int(self.radius))
         self.pixelpath.pop()
-        
-        pygame.draw.circle(display,self.color,self.pos,self.width//2)
 
 
 class Wall():
@@ -396,9 +394,10 @@ class Maze():
                                 int(self.linewidth*1.15))
         
             
-    def drawTrace(self,display):
-        self.tracedisplay.fill(clear)
-        self.trace.draw(self.tracedisplay)
+    def drawTrace(self,display,is_alive):
+        if is_alive:
+            self.tracedisplay.fill(clear)
+            self.trace.draw(self.tracedisplay)
         #all the sections of the trace need to be faded as one image, otherwise
         #we get issues with transparent surfaces overlapping and being more opaque
         self.tracedisplay.set_alpha(256 - self.tracefade)
@@ -407,7 +406,7 @@ class Maze():
 
 
 pygame.init()
-displaysize = [700,800]
+displaysize = [800,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -419,7 +418,7 @@ display = screen
 size = (3,3)
 nullzones = (((2,0),(2,1),2/5),)#(((1,1),(2,1),1/2),((3,3),(4,3),1),((0,4),(1,4),1/3),((1,1),(1,2),1/2),((2,2),(2,3),1)) #nullzone coordinate pairs must be left to right or up to down
 symbols = ()
-starts = ((2,2),)
+starts = ((3,3),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
 ends = ()#((0,0,up),(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
@@ -451,7 +450,7 @@ while not done:
     
     if startupdating:
         testmaze.update(is_alive)
-        testmaze.drawTrace(screen)
+        testmaze.drawTrace(screen, is_alive)
     
     pygame.display.flip()
     clock.tick(60)
