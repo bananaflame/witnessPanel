@@ -2,23 +2,14 @@ ideas, problems, misc:
 
 problem: trace sometimes snaps to intersection when pressing against outer border
 problem: line can pass through outer border
-problem: trace body not quite on the right place
-problem: current maze configuration and resolution seems to be not putting the bottom border in the right place
-still a problem with going down then back up again for line drawing, took video on phone
- - seems to be something about the code on the raspberry pi? weird
 
-idea: have a fifth type of nullzone, "full" that adds nullzones in all four directions
- - to make rounded maze corners, add rounded edges on default corners and any points adjacent to full nullzones if the nullzone is on edge of maze
 idea: to test if line on a finish point, check if either gridpos is further than maze size
 
-
-elif self.ysquarestravelled.is_integer(): - this line in Trace.update() can perhaps just be else:, test this
 
 To Do:
 add nullzone for trace start once line goes over another intersection
 add nullzones for line body in trymove()
 add maze border nullzones
-draw circles at trace body joints and fix trace body positioning
 
 further down the line:
 check if variables need to be self.var or just var
