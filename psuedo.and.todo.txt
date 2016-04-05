@@ -1,7 +1,6 @@
 ideas, problems, misc:
 
 problem: trace sometimes snaps to intersection when pressing against outer border
-problem: line can pass through outer border
 
 idea: to test if line on a finish point, check if either gridpos is further than maze size
 
