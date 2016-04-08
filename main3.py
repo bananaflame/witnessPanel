@@ -1,5 +1,6 @@
 import pygame
 import math
+from copy import deepcopy
 
 black = (  0,  0,    0) #establishing some constants for code readability
 white = (255, 255, 255)
@@ -26,7 +27,8 @@ class Trace():
         self.xborder = maze.wspace//2
         self.yborder = maze.hspace//2
         self.mazesize = maze.size
-        self.mazebarriers = maze.barriers
+        self.origbarriers = deepcopy(maze.barriers)
+        self.mazebarriers = deepcopy(maze.barriers)
         self.mazesquaresize = maze.squaresize
         self.gridsquaresize = maze.gridsquaresize
         self.color = maze.tracecolor
@@ -112,10 +114,15 @@ class Trace():
                     if self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending and coords to be added are not redundant
                         self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
                         self.pixelpath.append(tuple(self.pos))
-                        self.updateEdges(up)
-                    elif len(self.path) > 1 and self.path[0][1]+self.ysquarestravelled > self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
-                        self.path.pop()
-                        self.pixelpath.pop()
+                        self.addEdges(up)
+                    elif len(self.path) > 1:
+                        if self.path[0][1]+self.ysquarestravelled > self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
+                            self.popEdges()
+                            self.path.pop()
+                            self.pixelpath.pop()
+                        else:
+                            self.popEdges()
+                            self.addEdges(up)
                     self.currentbarrier = self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])][up]
                 if self.pos[1] - self.radius != self.currentbarrier:
                     self.pos[1] -= 1
@@ -130,10 +137,15 @@ class Trace():
                     if self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
                         self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
                         self.pixelpath.append(tuple(self.pos))
-                        self.updateEdges(down)
-                    elif len(self.path) > 1 and self.path[0][1]+self.ysquarestravelled < self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
-                        self.path.pop()
-                        self.pixelpath.pop()
+                        self.addEdges(down)
+                    elif len(self.path) > 1:
+                        if self.path[0][1]+self.ysquarestravelled < self.path[-2][1] and self.path[-1][0] == self.path[-2][0]: #line is retracting
+                            self.popEdges()
+                            self.path.pop()
+                            self.pixelpath.pop()
+                        else:
+                            self.popEdges()
+                            self.addEdges(down)
                     self.currentbarrier = self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])][down]
                 if self.pos[1] + self.radius != self.currentbarrier:
                     self.pos[1] += 1
@@ -148,10 +160,15 @@ class Trace():
                     if self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
                         self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
                         self.pixelpath.append(tuple(self.pos))
-                        self.updateEdges(right)
-                    elif len(self.path) > 1 and self.path[0][0]+self.xsquarestravelled < self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
-                        self.path.pop()
-                        self.pixelpath.pop()
+                        self.addEdges(right)
+                    elif len(self.path) > 1:
+                        if self.path[0][0]+self.xsquarestravelled < self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
+                            self.popEdges()
+                            self.path.pop()
+                            self.pixelpath.pop()
+                        else:
+                            self.popEdges()
+                            self.addEdges(right)
                     self.currentbarrier = self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])][right]
                 if self.pos[0] + self.radius != self.currentbarrier:
                     self.pos[0] += 1
@@ -166,10 +183,15 @@ class Trace():
                     if self.path[-1] != (self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled): #line is extending
                         self.path.append((self.path[0][0]+self.xsquarestravelled,self.path[0][1]+self.ysquarestravelled))
                         self.pixelpath.append(tuple(self.pos))
-                        self.updateEdges(left)
-                    elif len(self.path) > 1 and self.path[0][0]+self.xsquarestravelled > self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
-                        self.path.pop()
-                        self.pixelpath.pop()
+                        self.addEdges(left)
+                    elif len(self.path) > 1:
+                        if self.path[0][0]+self.xsquarestravelled > self.path[-2][0] and self.path[-1][1] == self.path[-2][1]: #line is retracting
+                            self.popEdges()
+                            self.path.pop()
+                            self.pixelpath.pop()
+                        else:
+                            self.popEdges()
+                            self.addEdges(left)
                     self.currentbarrier = self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])][left]
                 if self.pos[0] - self.radius != self.currentbarrier:
                     self.pos[0] -= 1
@@ -177,19 +199,47 @@ class Trace():
                     self.xsquarestravelled = self.xtravelled/self.gridsquaresize
                 else:
                     return
-        #print(self.path)
 
-    def updateEdges(self,direction):
-        pass
-
+    def addEdges(self,direction):
+        if direction != up:
+            if self.path[-1][1] != 0 and self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])-1][down] == None:
+                self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])-1][down] = self.yborder + self.path[-1][1]*self.gridsquaresize
+        if direction != down:
+            if self.path[-1][1] != self.mazesize[1] and self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])+1][up] == None:
+                self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])+1][up] = self.yborder + self.path[-1][1]*self.gridsquaresize + self.width
+        if direction != right:
+            if self.path[-1][0] != self.mazesize[0] and self.mazebarriers[int(self.path[-1][0])+1][int(self.path[-1][1])][left] == None:
+                self.mazebarriers[int(self.path[-1][0])+1][int(self.path[-1][1])][left] = self.xborder + self.path[-1][0]*self.gridsquaresize + self.width
+        if direction != left:
+            if self.path[-1][0] != 0 and self.mazebarriers[int(self.path[-1][0])-1][int(self.path[-1][1])][right] == None:
+                self.mazebarriers[int(self.path[-1][0])-1][int(self.path[-1][1])][right] = self.xborder + self.path[-1][0]*self.gridsquaresize
+        
+    def popEdges(self):
+        try:
+            self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])+1][up] = self.origbarriers[int(self.path[-1][0])][int(self.path[-1][1])+1][up]
+        except:
+            pass
+        try:
+            self.mazebarriers[int(self.path[-1][0])][int(self.path[-1][1])-1][down] = self.origbarriers[int(self.path[-1][0])][int(self.path[-1][1])-1][down]
+        except:
+            pass
+        try:
+            self.mazebarriers[int(self.path[-1][0])-1][int(self.path[-1][1])][right] = self.origbarriers[int(self.path[-1][0])-1][int(self.path[-1][1])][right]
+        except:
+            pass
+        try:
+            self.mazebarriers[int(self.path[-1][0])+1][int(self.path[-1][1])][left] = self.origbarriers[int(self.path[-1][0])+1][int(self.path[-1][1])][left]
+        except:
+            pass
+        
     def addStartBorders(self):
-        if self.path[0][0] != 0:
-            self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 - self.fullradius
-        if self.path[0][0] != self.mazesize[0]:
-            self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 + self.fullradius
-        if self.path[0][1] != 0:
+        if self.path[0][0] != 0 and self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] == None:
+                self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 - self.fullradius
+        if self.path[0][0] != self.mazesize[0] and self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] == None:
+                self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 + self.fullradius
+        if self.path[0][1] != 0 and self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] == None:
             self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 - self.fullradius
-        if self.path[0][1] != self.mazesize[1]:
+        if self.path[0][1] != self.mazesize[1] and self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] == None:
             self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 + self.fullradius
         
     def draw(self,display):
@@ -255,10 +305,6 @@ class Maze():
         self.rightends.sort()
         self.downends.sort()
         self.leftends.sort()
-        print(self.upends)
-        print(self.rightends)
-        print(self.downends)
-        print(self.leftends)
             
     def generateDimensions(self,display):
         image = display.copy()
@@ -435,8 +481,6 @@ class Maze():
         #we get issues with transparent surfaces overlapping and being more opaque
         self.tracedisplay.set_alpha(256 - self.tracefade)
         display.blit(self.tracedisplay,(0,0))
-        
-
 
 pygame.init()
 displaysize = [800,800]
@@ -448,13 +492,13 @@ startupdating = False
 done = False
 
 display = screen
-size = (3,3)
-nullzones = ()#((3,0,full),((1,1),(2,1),1/2),((1,1),(1,2),1/2))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
+size = (4,4)
+nullzones = ((3,0,full),(2,2,full),((1,1),(2,1),1/2),((1,1),(1,2),1/2))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
 symbols = ()
-starts = ((1,1),)
+starts = ((1,1),(2,3),(3,1))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ()#((0,0,up),(3,3,down),(3,3,right),(0,0,left))#(0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
+ends = ((0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
 hexagons = ()
 linefrac = 1/4
 endfrac = 3/10
