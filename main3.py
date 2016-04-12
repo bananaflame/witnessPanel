@@ -19,91 +19,103 @@ left = 3
 class Trace():
     def __init__(self, maze, startpos):
         #starting circle
-        self.fullradius = int(maze.linewidth*1.15)
-        self.currentradius = self.fullradius//3#start circle starts part of the way filled, as it does in game
-        self.donegrowing = False
         self.width = maze.linewidth
         self.radius = self.width/2
         self.xborder = maze.wspace//2
         self.yborder = maze.hspace//2
         self.mazesize = maze.size
-        self.origbarriers = deepcopy(maze.barriers)
-        self.mazebarriers = deepcopy(maze.barriers)
         self.mazesquaresize = maze.squaresize
         self.gridsquaresize = maze.gridsquaresize
         self.color = maze.tracecolor
-        self.pos = startpos
+        
+        self.origbarriers = maze.barriers
+        self.mazebarriers = deepcopy(maze.barriers)#we need the maze barriers and a copy of them, for which we must use deepcopy since it's a nested list
+                                                    #the copy will be used to reset barriers to their original values instead of recalculating them
+        self.pos = [startpos[0],startpos[1]]
         self.startpos = tuple(startpos)
+
         self.path = [((self.pos[0] - self.xborder - self.width/2)/(self.mazesquaresize+self.width),
                             (self.pos[1] - self.yborder - self.width/2)/(self.mazesquaresize+self.width)),] #starting grid position for path
         self.pixelpath = [self.startpos]
         self.isonrow = True
         self.isoncolumn = True
         self.xtravelled = 0
+        self.xsquarestravelled = 0.0
         self.ytravelled = 0
+        self.ysquarestravelled = 0.0
 
+        self.fullradius = int(maze.linewidth*1.15)
+        self.currentradius = self.fullradius//3#start circle starts part of the way filled, as it does in game
+        self.is_alive = True
+        self.is_validated = False
+        self.donegrowing = False
+        self.fade = 0
+        
         self.addStartBorders()
 
         
     def update(self):
-        #starting circle expansion
-        if not self.donegrowing:
-            if self.currentradius < self.fullradius:
-                self.currentradius += math.ceil((self.fullradius - self.currentradius)/5)#dictates speed of start circle filling
-            else:
-                self.donegrowing = True
-                
-        #trace head movement
-        mousepos = pygame.mouse.get_pos()
-        diffx = mousepos[0] - self.pos[0] #diff between center of line head and mouse, not top left corner
-        diffy = -mousepos[1] + self.pos[1] #reversed bc display y-axis is flipped
-        fractiontomove = 4
-        diffmargin = 2#prevents being in between pixels with cursor from making trace head oscillate 1 pixel
-
-        self.ysquarestravelled = self.ytravelled/self.gridsquaresize
-        self.xsquarestravelled = self.xtravelled/self.gridsquaresize
-        
-        if abs(diffy) > abs(diffx):#primary axis is up/down
-            
-            if self.xsquarestravelled.is_integer(): #trace is on grid column, can move up/down
-                if diffy > diffmargin:#up
-                    self.tryMove(diffy/fractiontomove, up)
-                elif diffy < -diffmargin:#down
-                    self.tryMove(abs(diffy)/fractiontomove, down)
-            else: #can't move up/down, try left/right
-                if diffx > diffmargin:#right
-                    self.tryMove(diffx/fractiontomove, right)
-                elif diffx < -diffmargin:#left
-                    self.tryMove(abs(diffx)/fractiontomove, left)
+        if self.is_alive and not self.is_validated:
+            #starting circle expansion
+            if not self.donegrowing:
+                if self.currentradius < self.fullradius:
+                    self.currentradius += math.ceil((self.fullradius - self.currentradius)/5)#dictates speed of start circle filling
+                else:
+                    self.donegrowing = True
                     
-                elif abs(diffy) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
-                    disttoisect = int((self.pos[0] - self.xborder - self.width/2)%(self.mazesquaresize+self.width))
-                    if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
-                        self.tryMove(disttoisect, left)
-                    elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is 1 linewidth left of intersection
-                        self.tryMove(self.mazesquaresize + self.width - disttoisect, right)
-                        
-                        
-        else:#primary axis is left/right
+            #trace head movement
+            mousepos = pygame.mouse.get_pos()
+            diffx = mousepos[0] - self.pos[0] #diff between center of line head and mouse, not top left corner
+            diffy = -mousepos[1] + self.pos[1] #reversed bc display y-axis is flipped
+            fractiontomove = 4
+            diffmargin = 2#prevents being in between pixels with cursor from making trace head oscillate 1 pixel
+
+            self.ysquarestravelled = self.ytravelled/self.gridsquaresize
+            self.xsquarestravelled = self.xtravelled/self.gridsquaresize
             
-            if self.ysquarestravelled.is_integer(): #trace is on grid row, can move up/down as long as no border in way
-                if diffx > diffmargin:#right
-                    self.tryMove(diffx/fractiontomove, right)
-                elif diffx < -diffmargin:#left
-                    self.tryMove(abs(diffx)/fractiontomove, left)
-            else: #can't move left/right, try up/down
-                if diffy > diffmargin:#up
-                    self.tryMove(diffy/fractiontomove, up)
-                elif diffy < -diffmargin:#down
-                    self.tryMove(abs(diffy)/fractiontomove, down)
+            if abs(diffy) > abs(diffx):#primary axis is up/down
                 
-                elif abs(diffx) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
-                    disttoisect = int((self.pos[1] - self.yborder - self.width/2)%(self.mazesquaresize+self.width))
-                    if disttoisect <= self.width:#trace is 1 linewidth below intersection 
-                        self.tryMove(disttoisect,up)
-                    elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is one linewidth above intersection
-                        self.tryMove(self.mazesquaresize+self.width - disttoisect, down)
+                if self.xsquarestravelled.is_integer(): #trace is on grid column, can move up/down
+                    if diffy > diffmargin:#up
+                        self.tryMove(diffy/fractiontomove, up)
+                    elif diffy < -diffmargin:#down
+                        self.tryMove(abs(diffy)/fractiontomove, down)
+                else: #can't move up/down, try left/right
+                    if diffx > diffmargin:#right
+                        self.tryMove(diffx/fractiontomove, right)
+                    elif diffx < -diffmargin:#left
+                        self.tryMove(abs(diffx)/fractiontomove, left)
                         
+                    elif abs(diffy) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
+                        disttoisect = int((self.pos[0] - self.xborder - self.width/2)%(self.mazesquaresize+self.width))
+                        if disttoisect <= self.width:#trace is 1 linewidth right of intersection 
+                            self.tryMove(disttoisect, left)
+                        elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is 1 linewidth left of intersection
+                            self.tryMove(self.mazesquaresize + self.width - disttoisect, right)
+                            
+                            
+            else:#primary axis is left/right
+                
+                if self.ysquarestravelled.is_integer(): #trace is on grid row, can move up/down as long as no border in way
+                    if diffx > diffmargin:#right
+                        self.tryMove(diffx/fractiontomove, right)
+                    elif diffx < -diffmargin:#left
+                        self.tryMove(abs(diffx)/fractiontomove, left)
+                else: #can't move left/right, try up/down
+                    if diffy > diffmargin:#up
+                        self.tryMove(diffy/fractiontomove, up)
+                    elif diffy < -diffmargin:#down
+                        self.tryMove(abs(diffy)/fractiontomove, down)
+                    
+                    elif abs(diffx) > self.mazesquaresize//4:#if cursor getting far away, check if can snap to intersection
+                        disttoisect = int((self.pos[1] - self.yborder - self.width/2)%(self.mazesquaresize+self.width))
+                        if disttoisect <= self.width:#trace is 1 linewidth below intersection 
+                            self.tryMove(disttoisect,up)
+                        elif disttoisect >= (self.mazesquaresize+self.width) - self.width:#trace is one linewidth above intersection
+                            self.tryMove(self.mazesquaresize+self.width - disttoisect, down)
+        elif not self.is_alive and self.fade < 256:
+            self.fade += 2
+            
                         
     def tryMove(self,dist_to_move,direction):
         distance = math.ceil(dist_to_move) #always try to move at least 1 pixel
@@ -198,7 +210,7 @@ class Trace():
                     self.xtravelled -= 1
                     self.xsquarestravelled = self.xtravelled/self.gridsquaresize
                 else:
-                    return
+                    return 
 
     def addEdges(self,direction):
         if direction != up:
@@ -267,10 +279,11 @@ class Maze():
         self.bgcolor = bgcolor #color of squares and border
         self.gridcolor = gridcolor #color of grid lines
         self.tracecolor = tracecolor #color of trace
+        
         self.grid = []
-
         self.tracedisplay = pygame.Surface((display.get_width(),display.get_height()))
         self.tracedisplay.set_colorkey(clear)#makes everything that's that color transparent
+        self.tracedisplay.fill(clear)
         
         for y in range(size[1]):
             self.grid.append([])
@@ -279,6 +292,9 @@ class Maze():
                 
         self.generateDimensions(display)
         self.generateNullZonesAndMaze(nullzones,display)
+        self.trace = Trace(self,(0,0))#need a dead trace to start out with
+        self.trace.is_alive = False
+        self.trace.fade = 256
         
     def printMaze(self):
         for i in self.grid:
@@ -452,15 +468,27 @@ class Maze():
                 self.trace = Trace(self,
                                 [self.wspace//2 + self.linewidth//2 + start[0]*self.gridsquaresize,
                                 self.hspace//2 + self.linewidth//2 + start[1]*self.gridsquaresize])
-                self.tracefade = 0
                 return True
+            
+    def snapToExit(self):
+        if self.trace.pos[1] < self.hspace//2 + self.linewidth/4:
+            self.trace.tryMove(100000000,up)#just max it out, it will stop trying to move up once it hits the barrier
+            return True
+        elif self.trace.pos[1] > self.hspace//2 + self.gridsquaresize*self.size[1] + self.linewidth - self.linewidth/4:
+            self.trace.tryMove(100000000,down)
+            return True
+        elif self.trace.pos[0] < self.wspace//2 + self.linewidth/4:
+            self.trace.tryMove(100000000,left)
+            return True
+        elif self.trace.pos[0] > self.wspace//2 + self.gridsquaresize*self.size[0] + self.linewidth - self.linewidth/4:
+            self.trace.tryMove(100000000,right)
+            return True
         
-    def update(self,is_alive):
-        if is_alive:
-            #update maze flashing symbols when wrong
-            self.trace.update()
-        elif self.tracefade < 256:
-            self.tracefade += 2
+    def checkSolution(self):
+        return True
+    
+    def update(self):
+        self.trace.update()
         
     def drawMaze(self, display):
         display.blit(self.mazeimage,(0,0))
@@ -473,13 +501,12 @@ class Maze():
 				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1),
                                 int(self.linewidth*1.15))
         
-    def drawTrace(self,display,is_alive):
-        if is_alive:
-            self.tracedisplay.fill(clear)
-            self.trace.draw(self.tracedisplay)
+    def drawTrace(self,display):
+        self.tracedisplay.fill(clear)
+        self.trace.draw(self.tracedisplay)
         #all the sections of the trace need to be faded as one image, otherwise
         #we get issues with transparent surfaces overlapping and being more opaque
-        self.tracedisplay.set_alpha(256 - self.tracefade)
+        self.tracedisplay.set_alpha(256 - self.trace.fade)
         display.blit(self.tracedisplay,(0,0))
 
 pygame.init()
@@ -492,13 +519,13 @@ startupdating = False
 done = False
 
 display = screen
-size = (4,4)
-nullzones = ((3,0,full),(2,2,full),((1,1),(2,1),1/2),((1,1),(1,2),1/2))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
+size = (1,1)
+nullzones = ()#((3,0,full),(2,2,full),((1,1),(2,1),1),((1,1),(1,2),1),((0,0),(1,0),1))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
 symbols = ()
-starts = ((1,1),(2,3),(3,1))
+starts = ((0,0),)#((2,3),(3,1))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((0,0,left),(2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
+ends = ((1,0,up),(0,1,left),(1,1,right),(1,1,down))#((2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
 hexagons = ()
 linefrac = 1/4
 endfrac = 3/10
@@ -512,13 +539,16 @@ while not done:
     pygame.event.clear()#won't need to get events from pygame event queue, chuck'em
     mousestates = pygame.mouse.get_pressed()
     if mousestates[0] != m1prev:
+        mousepos = pygame.mouse.get_pos()
         if m1prev == False:#mouse being pressed
-            mousepos = pygame.mouse.get_pos()
-            if testmaze.tryStart(mousepos):
-                is_alive = True
-                startupdating = True
+            testmaze.tryStart(mousepos)
         else:#mouse being released
-            is_alive = False
+            if testmaze.snapToExit():
+                if testmaze.checkSolution():
+                    testmaze.trace.is_validated = True
+            else:
+                testmaze.trace.is_alive = False
+            
         m1prev = mousestates[0]
         
     if mousestates[1]:#close program upon middle mouse
@@ -527,10 +557,9 @@ while not done:
     screen.fill(testmaze.gridcolor)
     testmaze.drawMaze(screen)
     
-    if startupdating:
-        testmaze.update(is_alive)
-        testmaze.drawTrace(screen, is_alive)
-    
+    testmaze.update()
+    testmaze.drawTrace(screen)
     pygame.display.flip()
     clock.tick(60)
+    
 pygame.quit()
