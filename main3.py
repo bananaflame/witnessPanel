@@ -273,7 +273,7 @@ class Maze():
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.starts = starts #list of starting point positions
         self.sortEnds(ends) #generates 4 lists of end points, one for each maze side, needed later
-        self.hexagons = hexagons #list of hexagon positions
+        self.sortHexagons(hexagons) #generates 2 lists of hexagons, those on grid coordinates and those between them, and converts their positions to pixel values
         self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
         self.endfrac = endfrac #similar to linefrac, the length of the finish point nub section given as a fraction of square size, i.e. 1/4
         self.bgcolor = bgcolor #color of squares and border
@@ -321,7 +321,18 @@ class Maze():
         self.rightends.sort()
         self.downends.sort()
         self.leftends.sort()
-            
+
+    def sortHexagons(self,hexagonlist):
+        self.gridhexagons = []
+        self.linehexagons = []
+        for hexagon in hexagonlist:
+            self.linehexagons.append(hexagon)
+            try:
+                temp = hexagon[0][0]
+            except:
+                self.linehexagons.pop()
+                self.gridhexagons.append(hexagon)
+    
     def generateDimensions(self,display):
         image = display.copy()
         self.screenrect = display.get_rect()
@@ -407,15 +418,23 @@ class Maze():
                     self.barriers[nullzone[0]][nullzone[1]+1][up] = barrierbot
                 
             elif abs(nullzone[1][0] - nullzone[0][0]) == 1: #horizontal
-                barrierleft = int(self.wspace/2 + nullzone[0][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
-                barrierright = int(self.wspace/2 + nullzone[0][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                if nullzone[0][0] < nullzone[1][0]:
+                    barrierleft = int(self.wspace/2 + nullzone[0][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                    barrierright = int(self.wspace/2 + nullzone[0][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                else:
+                    barrierleft = int(self.wspace/2 + nullzone[1][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                    barrierright = int(self.wspace/2 + nullzone[1][0]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
                 self.barriers[nullzone[0][0]][nullzone[0][1]][right] = barrierleft
                 self.barriers[nullzone[1][0]][nullzone[1][1]][left] = barrierright
                 pygame.draw.line(self.mazeimage,self.bgcolor,(barrierleft+1,self.hspace//2+self.gridsquaresize*nullzone[0][1]+self.linewidth/2),
                                                              (barrierright,self.hspace//2+self.gridsquaresize*nullzone[0][1]+self.linewidth/2),self.linewidth)
             elif abs(nullzone[1][1] - nullzone[0][1]) == 1: #vertical
-                barriertop = int(self.hspace/2 + nullzone[0][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
-                barrierbot = int(self.hspace/2 + nullzone[0][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                if nullzone[0][1] < nullzone[1][1]:
+                    barriertop = int(self.hspace/2 + nullzone[0][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                    barrierbot = int(self.hspace/2 + nullzone[0][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
+                else:
+                    barriertop = int(self.hspace/2 + nullzone[1][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize)
+                    barrierbot = int(self.hspace/2 + nullzone[1][1]*self.gridsquaresize + self.linewidth + ((1-nullzone[2])/2)*self.squaresize + nullzone[2]*self.squaresize)
                 self.barriers[nullzone[0][0]][nullzone[0][1]][down] = barriertop
                 self.barriers[nullzone[1][0]][nullzone[1][1]][up] = barrierbot
                 pygame.draw.line(self.mazeimage,self.bgcolor,(self.wspace//2+self.gridsquaresize*nullzone[0][0]+self.linewidth/2,barriertop+1),
@@ -458,6 +477,7 @@ class Maze():
                 pygame.draw.circle(self.mazeimage,self.gridcolor,(int(self.wspace//2+self.linewidth/2-endlength+1),
                                                                   int(self.hspace//2+self.gridsquaresize*row+self.linewidth/2+1)),self.linewidth//2)
         self.drawStarts(self.mazeimage)
+        self.drawHexagons(self.mazeimage)
         
     def tryStart(self,mousepos):
         mgridpos = [(mousepos[0] - (self.wspace//2) - self.linewidth//2)/self.gridsquaresize,
@@ -485,6 +505,17 @@ class Maze():
             return True
         
     def checkSolution(self):
+        for hexagon in self.gridhexagons:
+            if hexagon not in self.trace.path:
+                return False
+        for hexagon in self.linehexagons:
+            print(hexagon)
+            isInLine = False
+            for pairIndex in range(len(self.trace.path)-1):
+                if hexagon == (self.trace.path[pairIndex],self.trace.path[pairIndex+1]) or hexagon == (self.trace.path[pairIndex+1],self.trace.path[pairIndex]):
+                    isInLine = True
+            if not isInLine:
+                return False
         return True
     
     def update(self):
@@ -500,7 +531,34 @@ class Maze():
                                 (self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
 				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1),
                                 int(self.linewidth*1.15))
-        
+            
+    def drawHexagons(self,display):
+        print(self.linehexagons,self.gridhexagons)
+        hex_sl = int(0.45*self.linewidth)
+        hex_height = math.ceil(0.389711*self.linewidth)
+        for hexagon in self.gridhexagons:
+            pixelcoords = (self.wspace//2 + hexagon[0]*self.gridsquaresize + self.linewidth/2 + 1,
+                           self.hspace//2 + hexagon[1]*self.gridsquaresize+self.linewidth/2 + 1)
+            pygame.draw.polygon(display,hexagon[2],((pixelcoords[0]+hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)))
+        for hexagon in self.linehexagons:
+            if abs(hexagon[1][0] - hexagon[0][0]) == 1:
+                midpoint = ((hexagon[0][0] + hexagon[1][0])/2,hexagon[1][1])
+            else:
+                midpoint = (hexagon[0][0],(hexagon[0][1] + hexagon[1][1])/2)
+            pixelcoords = (self.wspace//2 + midpoint[0]*self.gridsquaresize + self.linewidth/2 + 1,
+                       self.hspace//2 + midpoint[1]*self.gridsquaresize + self.linewidth/2 + 1)
+            pygame.draw.polygon(display,hexagon[2],((pixelcoords[0]+hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)))
+
     def drawTrace(self,display):
         self.tracedisplay.fill(clear)
         self.trace.draw(self.tracedisplay)
@@ -519,14 +577,14 @@ startupdating = False
 done = False
 
 display = screen
-size = (1,1)
-nullzones = ()#((3,0,full),(2,2,full),((1,1),(2,1),1),((1,1),(1,2),1),((0,0),(1,0),1))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
+size = (4,4)
+nullzones = (((2,2),(3,2),1/2),((3,2),(2,2),1/2))#((3,0,full),(2,2,full),((1,1),(2,1),1),((1,1),(1,2),1),((0,0),(1,0),1))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
 symbols = ()
 starts = ((0,0),)#((2,3),(3,1))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((1,0,up),(0,1,left),(1,1,right),(1,1,down))#((2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
-hexagons = ()
+ends = ((4,0,right),)#((2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
+hexagons = ((0,3,black),(4,4,red),((2,3),(2,2),green),((1,3),(2,3),black),(1,3,blue),(2,3,white))
 linefrac = 1/4
 endfrac = 3/10
 bgcolor = (0,70,205,255)
@@ -546,6 +604,8 @@ while not done:
             if testmaze.snapToExit():
                 if testmaze.checkSolution():
                     testmaze.trace.is_validated = True
+                else:
+                    testmaze.trace.is_alive = False
             else:
                 testmaze.trace.is_alive = False
             
