@@ -253,7 +253,26 @@ class Trace():
             self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 - self.fullradius
         if self.path[0][1] != self.mazesize[1] and self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] == None:
             self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 + self.fullradius
-        
+
+    def pathToVectors(self):
+        vectorlist = []
+        for pathindex in range(len(self.path)-1):
+            diffx = self.path[pathindex+1][0] - self.path[pathindex][0]
+            diffy = self.path[pathindex+1][1] - self.path[pathindex][1]
+            if diffx != 0 and diffy != 0:
+                print("Error: line path includes diagonal.")
+                return
+            elif diffx == 1:
+                vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),right))
+            elif diffx == -1:
+                vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),left))
+            elif diffy == -1:
+                vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),up))
+            elif diffy == 1:
+                vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),down))
+        print(vectorlist)
+        return vectorlist
+    
     def draw(self,display):
         pygame.draw.circle(display, self.color, (self.startpos[0]+1,self.startpos[1]+1), self.currentradius)
         self.pixelpath.append(self.pos)
@@ -280,27 +299,15 @@ class Maze():
         self.gridcolor = gridcolor #color of grid lines
         self.tracecolor = tracecolor #color of trace
         
-        self.grid = []
         self.tracedisplay = pygame.Surface((display.get_width(),display.get_height()))
         self.tracedisplay.set_colorkey(clear)#makes everything that's that color transparent
         self.tracedisplay.fill(clear)
         
-        for y in range(size[1]):
-            self.grid.append([])
-            for x in range(size[0]):
-                self.grid[y].append(None)
-                
         self.generateDimensions(display)
         self.generateNullZonesAndMaze(nullzones,display)
         self.trace = Trace(self,(0,0))#need a dead trace to start out with
         self.trace.is_alive = False
         self.trace.fade = 256
-        
-    def printMaze(self):
-        for i in self.grid:
-            for j in i:
-                print(j, end=" ")
-            print()
             
     def sortEnds(self,ends):
         sortedends = sorted(ends, key=lambda end: end[2])#sorts all ends by direction value in third index
@@ -506,18 +513,87 @@ class Maze():
         
     def checkSolution(self):
         for hexagon in self.gridhexagons:
-            if hexagon not in self.trace.path:
+            if (hexagon[0],hexagon[1]) not in self.trace.path:
                 return False
         for hexagon in self.linehexagons:
-            print(hexagon)
             isInLine = False
             for pairIndex in range(len(self.trace.path)-1):
-                if hexagon == (self.trace.path[pairIndex],self.trace.path[pairIndex+1]) or hexagon == (self.trace.path[pairIndex+1],self.trace.path[pairIndex]):
+                if (hexagon[0],hexagon[1]) == (self.trace.path[pairIndex],self.trace.path[pairIndex+1]) or (hexagon[0],hexagon[1]) == (self.trace.path[pairIndex+1],self.trace.path[pairIndex]):
                     isInLine = True
             if not isInLine:
                 return False
+
+        pathvectors = self.trace.pathToVectors()
+        grid = []
+        for column in range(self.size[0]):
+            grid.append([])
+            for row in range(self.size[1]):
+                grid[column].append(0)
+        self.compartmentalizeGrid(grid,pathvectors)
+        
+
         return True
     
+
+    def compartmentalizeGrid(self,grid,vectorlist):
+        leftgroup = 1
+        rightgroup = 2
+        for vector in vectorlist:
+            currgroup = max(leftgroup,rightgroup)
+            if vector[2] == up:
+                if vector[0] == 0:
+                    if leftgroup != currgroup:
+                        leftgroup = currgroup + 1
+                    grid[vector[0]][vector[1]-1] = rightgroup
+                elif vector[0] == size[0]:
+                    if rightgroup != currgroup:
+                        rightgroup = currgroup + 1
+                    grid[vector[0]-1][vector[1]-1] = leftgroup
+                else:
+                    grid[vector[0]][vector[1]-1] = rightgroup
+                    grid[vector[0]-1][vector[1]-1] = leftgroup
+                    
+            elif vector[2] == down:
+                if vector[0] == 0:
+                    if rightgroup != currgroup:
+                        rightgroup = currgroup + 1
+                    grid[vector[0]][vector[1]] = leftgroup
+                elif vector[0] == size[0]:
+                    if leftgroup != currgroup:
+                        leftgroup = currgroup + 1
+                    grid[vector[0]][vector[1]-1] = rightgroup
+                else:
+                    grid[vector[0]][vector[1]] = leftgroup
+                    grid[vector[0]-1][vector[1]] = rightgroup
+                    
+            elif vector[2] == right:
+                if vector[1] == 0:
+                    if leftgroup != currgroup:
+                        leftgroup = currgroup + 1
+                    grid[vector[0]][vector[1]] = rightgroup
+                elif vector[1] == size[1]:
+                    if rightgroup != currgroup:
+                        rightgroup = currgroup + 1
+                    grid[vector[0]][vector[1]-1] = leftgroup
+                else:
+                    grid[vector[0]][vector[1]] = rightgroup
+                    grid[vector[0]][vector[1]-1] = leftgroup
+                    
+            elif vector[2] == left:
+                if vector[1] == 0:
+                    if rightgroup != currgroup:
+                        rightgroup = currgroup + 1
+                    grid[vector[0]-1][vector[1]] = leftgroup
+                elif vector[1] == size[1]:
+                    if leftgroup != currgroup:
+                        leftgroup = currgroup + 1
+                    grid[vector[0]-1][vector[1]-1] = rightgroup
+                else:
+                    grid[vector[0]-1][vector[1]] = leftgroup
+                    grid[vector[0]-1][vector[1]-1] = rightgroup
+        print(grid)
+
+        
     def update(self):
         self.trace.update()
         
@@ -533,7 +609,6 @@ class Maze():
                                 int(self.linewidth*1.15))
             
     def drawHexagons(self,display):
-        print(self.linehexagons,self.gridhexagons)
         hex_sl = int(0.45*self.linewidth)
         hex_height = math.ceil(0.389711*self.linewidth)
         for hexagon in self.gridhexagons:
@@ -578,18 +653,18 @@ done = False
 
 display = screen
 size = (4,4)
-nullzones = (((2,2),(3,2),1/2),((3,2),(2,2),1/2))#((3,0,full),(2,2,full),((1,1),(2,1),1),((1,1),(1,2),1),((0,0),(1,0),1))#((0,4,full),(0,0,full),(4,0,full),(4,4,full))
+nullzones = ()#((0,0,full),((2,1),(3,1),1),((2,2),(2,3),1))
 symbols = ()
-starts = ((0,0),)#((2,3),(3,1))
+starts = ((0,4),(0,0),(2,2),(4,4),(0,2),(2,4))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((4,0,right),)#((2,0,up),(4,0,right),(4,4,right),(4,4,down),(0,4,down),(0,4,left))
-hexagons = ((0,3,black),(4,4,red),((2,3),(2,2),green),((1,3),(2,3),black),(1,3,blue),(2,3,white))
+ends = ((4,0,up),)
+hexagons = ()#((1,0,black),(2,1,black),(3,1,black),(0,2,black),(1,2,black),(3,3,black))
 linefrac = 1/4
 endfrac = 3/10
-bgcolor = (0,70,205,255)
-gridcolor = (25,25,112,255)
-tracecolor = white
+bgcolor = (0,238,0)
+gridcolor = (0,100,0)
+tracecolor = (255,255,200)
 
 testmaze = Maze(display,size,nullzones,symbols,starts,ends,hexagons,linefrac,endfrac,bgcolor,gridcolor,tracecolor)
 
@@ -600,7 +675,8 @@ while not done:
         mousepos = pygame.mouse.get_pos()
         if m1prev == False:#mouse being pressed
             testmaze.tryStart(mousepos)
-        else:#mouse being released
+        elif testmaze.trace.is_alive and not testmaze.trace.is_validated:#mouse being released
+            #checking if it is alive prevents this from running when no trace is active
             if testmaze.snapToExit():
                 if testmaze.checkSolution():
                     testmaze.trace.is_validated = True
