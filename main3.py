@@ -289,6 +289,7 @@ class Maze():
                  linefrac, endfrac,
                  bgcolor, gridcolor, tracecolor):
         self.size = size #tuple with (x,y)
+        self.nullzones = nullzones
         self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.starts = starts #list of starting point positions
         self.sortEnds(ends) #generates 4 lists of end points, one for each maze side, needed later
@@ -541,58 +542,49 @@ class Maze():
         for vector in vectorlist:
             currgroup = max(leftgroup,rightgroup)
             if vector[2] == up:
-                if vector[0] == 0:
-                    if leftgroup != currgroup:
-                        leftgroup = currgroup + 1
+                if vector[0] == 0 or (vector[0]-1,vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
+                    leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = rightgroup
-                elif vector[0] == size[0]:
-                    if rightgroup != currgroup:
-                        rightgroup = currgroup + 1
+                elif vector[0] == size[0] or (vector[0]+1,vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = leftgroup
                 else:
                     grid[vector[0]][vector[1]-1] = rightgroup
                     grid[vector[0]-1][vector[1]-1] = leftgroup
                     
             elif vector[2] == down:
-                if vector[0] == 0:
-                    if rightgroup != currgroup:
-                        rightgroup = currgroup + 1
+                if vector[0] == 0 or (vector[0]-1,vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = leftgroup
-                elif vector[0] == size[0]:
-                    if leftgroup != currgroup:
-                        leftgroup = currgroup + 1
+                elif vector[0] == size[0] or (vector[0]+1,vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                    leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = rightgroup
                 else:
                     grid[vector[0]][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]] = rightgroup
                     
             elif vector[2] == right:
-                if vector[1] == 0:
-                    if leftgroup != currgroup:
-                        leftgroup = currgroup + 1
+                if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1]-1,full) in self.nullzones:
+                    leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = rightgroup
-                elif vector[1] == size[1]:
-                    if rightgroup != currgroup:
-                        rightgroup = currgroup + 1
+                elif vector[1] == size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1]+1,full) in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = leftgroup
                 else:
                     grid[vector[0]][vector[1]] = rightgroup
                     grid[vector[0]][vector[1]-1] = leftgroup
                     
             elif vector[2] == left:
-                if vector[1] == 0:
-                    if rightgroup != currgroup:
-                        rightgroup = currgroup + 1
+                if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1]-1,full) in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]] = leftgroup
-                elif vector[1] == size[1]:
-                    if leftgroup != currgroup:
-                        leftgroup = currgroup + 1
+                elif vector[1] == size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1]+1,full) in self.nullzones:
+                    leftgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = rightgroup
                 else:
                     grid[vector[0]-1][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]-1] = rightgroup
         print(grid)
-
         
     def update(self):
         self.trace.update()
@@ -653,9 +645,9 @@ done = False
 
 display = screen
 size = (4,4)
-nullzones = ()#((0,0,full),((2,1),(3,1),1),((2,2),(2,3),1))
+nullzones = ((0,0,full),(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
 symbols = ()
-starts = ((0,4),(0,0),(2,2),(4,4),(0,2),(2,4))
+starts = ((2,2),(0,2))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
 ends = ((4,0,up),)
