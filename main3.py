@@ -270,7 +270,6 @@ class Trace():
                 vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),up))
             elif diffy == 1:
                 vectorlist.append((int(self.path[pathindex][0]),int(self.path[pathindex][1]),down))
-        print(vectorlist)
         return vectorlist
     
     def draw(self,display):
@@ -531,11 +530,9 @@ class Maze():
             for row in range(self.size[1]):
                 grid[column].append(0)
         self.compartmentalizeGrid(grid,pathvectors)
-        
 
         return True
     
-
     def compartmentalizeGrid(self,grid,vectorlist):
         leftgroup = 1
         rightgroup = 2
@@ -558,7 +555,7 @@ class Maze():
                     grid[vector[0]][vector[1]] = leftgroup
                 elif vector[0] == size[0] or (vector[0]+1,vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
                     leftgroup = currgroup + 1
-                    grid[vector[0]][vector[1]-1] = rightgroup
+                    grid[vector[0]-1][vector[1]] = rightgroup
                 else:
                     grid[vector[0]][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]] = rightgroup
@@ -584,6 +581,40 @@ class Maze():
                 else:
                     grid[vector[0]-1][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]-1] = rightgroup
+        
+        is_filled = False
+        infinite = 0
+        while is_filled == False:
+            is_filled = True
+            infinite = infinite + 1
+            if infinite > 8:
+                break
+            for column in range(len(grid)):
+                for row in range(len(grid[0])):
+                    if column != len(grid)-1 and grid[column][row] != grid[column+1][row] and (column+1,row,down) not in vectorlist and (column+1,row+1,up) not in vectorlist:
+                        is_filled = False
+                        if grid[column][row] == 0:
+                            grid[column][row] = grid[column+1][row]
+                        elif grid[column+1][row] == 0:
+                            grid[column+1][row] = grid[column][row]
+                        else:
+                            for newcolumn in range(len(grid)):
+                                for newrow in range(len(grid[0])):
+                                    if grid[newcolumn][newrow] == grid[column+1][row]:
+                                        grid[newcolumn][newrow] = grid[column][row]
+                    if row != len(grid[0])-1 and grid[column][row] != grid[column][row+1] and (column,row+1,right) not in vectorlist and (column+1,row+1,left) not in vectorlist:
+                        is_filled = False
+                        if grid[column][row] == 0:
+                            grid[column][row] = grid[column][row+1]
+                        elif grid[column][row+1] == 0:
+                            grid[column][row+1] = grid[column][row]
+                        else:
+                            for newcolumn in range(len(grid)):
+                                for newrow in range(len(grid[0])):
+                                    if grid[newcolumn][newrow] == grid[column][row+1]:
+                                        grid[newcolumn][newrow] = grid[column][row]
+
+
         print(grid)
         
     def update(self):
@@ -635,7 +666,7 @@ class Maze():
         display.blit(self.tracedisplay,(0,0))
 
 pygame.init()
-displaysize = [800,800]
+displaysize = [900,900]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 m1prev = False
@@ -644,10 +675,10 @@ startupdating = False
 done = False
 
 display = screen
-size = (4,4)
-nullzones = ((0,0,full),(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
+size = (7,5)
+nullzones = ((7,5,full),(7,4,full),(6,5,full),(0,0,full))#,(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
 symbols = ()
-starts = ((2,2),(0,2))
+starts = ((2,2),(0,2),(2,4))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
 ends = ((4,0,up),)
