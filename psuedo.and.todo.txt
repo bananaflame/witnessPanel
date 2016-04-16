@@ -2,13 +2,7 @@ ideas, problems, misc:
 
 problem: trace sometimes snaps to intersection when pressing against outer border
 
-idea: to test if line on a finish point, check if either gridpos is further than maze size
-
-
 To Do:
-add nullzone for trace start once line goes over another intersection
-add nullzones for line body in trymove()
-add maze border nullzones
 
 further down the line:
 check if variables need to be self.var or just var

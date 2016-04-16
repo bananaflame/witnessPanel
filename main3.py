@@ -1,4 +1,4 @@
-import pygame
+import pygame, pygame.gfxdraw
 import math
 from copy import deepcopy
 
@@ -273,7 +273,7 @@ class Trace():
         return vectorlist
     
     def draw(self,display):
-        pygame.draw.circle(display, self.color, (self.startpos[0]+1,self.startpos[1]+1), self.currentradius)
+        pygame.gfxdraw.filled_circle(display, self.startpos[0]+1,self.startpos[1]+1, self.currentradius+1, self.color)
         self.pixelpath.append(self.pos)
         for coord in range(len(self.pixelpath)-1):
             pygame.draw.line(display,self.color,(self.pixelpath[coord][0],self.pixelpath[coord][1]),(self.pixelpath[coord+1][0],self.pixelpath[coord+1][1]),self.width)
@@ -283,16 +283,14 @@ class Trace():
 
         
 class Maze():
-    def __init__(self, display, size, nullzones,
-                 symbols, starts, ends, hexagons,
-                 linefrac, endfrac,
-                 bgcolor, gridcolor, tracecolor):
+    def __init__(self, display, size, nullzones, starts, ends, hexagons, squares, stars, linefrac, endfrac, bgcolor, gridcolor, tracecolor):
         self.size = size #tuple with (x,y)
         self.nullzones = nullzones
-        self.symbols = symbols #tuple with (x,y), relative to squares, not intersections
         self.starts = starts #list of starting point positions
         self.sortEnds(ends) #generates 4 lists of end points, one for each maze side, needed later
         self.sortHexagons(hexagons) #generates 2 lists of hexagons, those on grid coordinates and those between them, and converts their positions to pixel values
+        self.squares = squares
+        self.stars = stars
         self.linefrac = linefrac #should be a fraction, i.e. 1/4 for 1/4 the size of squares
         self.endfrac = endfrac #similar to linefrac, the length of the finish point nub section given as a fraction of square size, i.e. 1/4
         self.bgcolor = bgcolor #color of squares and border
@@ -485,6 +483,7 @@ class Maze():
                                                                   int(self.hspace//2+self.gridsquaresize*row+self.linewidth/2+1)),self.linewidth//2)
         self.drawStarts(self.mazeimage)
         self.drawHexagons(self.mazeimage)
+        self.drawSquares(self.mazeimage)
         
     def tryStart(self,mousepos):
         mgridpos = [(mousepos[0] - (self.wspace//2) - self.linewidth//2)/self.gridsquaresize,
@@ -522,6 +521,8 @@ class Maze():
                     isInLine = True
             if not isInLine:
                 return False
+            
+        #don't forget about triangles here
 
         pathvectors = self.trace.pathToVectors()
         grid = []
@@ -531,6 +532,17 @@ class Maze():
                 grid[column].append(0)
         self.compartmentalizeGrid(grid,pathvectors)
 
+        groups = {}
+        for column in range(len(grid)):
+            for row in range(len(grid[0])):
+                if grid[column][row] not in groups.keys():
+                    groups[grid[column][row]] = []
+                groups[grid[column][row]].append((column,row))
+        print(groups)
+            
+        
+
+        
         return True
     
     def compartmentalizeGrid(self,grid,vectorlist):
@@ -548,7 +560,6 @@ class Maze():
                 else:
                     grid[vector[0]][vector[1]-1] = rightgroup
                     grid[vector[0]-1][vector[1]-1] = leftgroup
-                    
             elif vector[2] == down:
                 if vector[0] == 0 or (vector[0]-1,vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
                     rightgroup = currgroup + 1
@@ -559,7 +570,6 @@ class Maze():
                 else:
                     grid[vector[0]][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]] = rightgroup
-                    
             elif vector[2] == right:
                 if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1]-1,full) in self.nullzones:
                     leftgroup = currgroup + 1
@@ -570,7 +580,6 @@ class Maze():
                 else:
                     grid[vector[0]][vector[1]] = rightgroup
                     grid[vector[0]][vector[1]-1] = leftgroup
-                    
             elif vector[2] == left:
                 if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1]-1,full) in self.nullzones:
                     rightgroup = currgroup + 1
@@ -613,9 +622,6 @@ class Maze():
                                 for newrow in range(len(grid[0])):
                                     if grid[newcolumn][newrow] == grid[column][row+1]:
                                         grid[newcolumn][newrow] = grid[column][row]
-
-
-        print(grid)
         
     def update(self):
         self.trace.update()
@@ -626,10 +632,14 @@ class Maze():
     def drawStarts(self,display):
         self.startlist = []
         for startpos in self.starts:
-            pygame.draw.circle(display,self.gridcolor,
-                                (self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
-				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1),
-                                int(self.linewidth*1.15))
+            pygame.gfxdraw.aacircle(display,
+                                self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
+				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1,
+                                int(self.linewidth*1.15),self.gridcolor)
+            pygame.gfxdraw.filled_circle(display,
+                                self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
+				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1,
+                                int(self.linewidth*1.15),self.gridcolor)
             
     def drawHexagons(self,display):
         hex_sl = int(0.45*self.linewidth)
@@ -637,12 +647,18 @@ class Maze():
         for hexagon in self.gridhexagons:
             pixelcoords = (self.wspace//2 + hexagon[0]*self.gridsquaresize + self.linewidth/2 + 1,
                            self.hspace//2 + hexagon[1]*self.gridsquaresize+self.linewidth/2 + 1)
-            pygame.draw.polygon(display,hexagon[2],((pixelcoords[0]+hex_sl,pixelcoords[1]),
+            pygame.gfxdraw.aapolygon(display,((pixelcoords[0]+hex_sl,pixelcoords[1]),
                                                   (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
                                                   (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
                                                   (pixelcoords[0]-hex_sl,pixelcoords[1]),
                                                   (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
-                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)))
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)), hexagon[2])
+            pygame.gfxdraw.filled_polygon(display,((pixelcoords[0]+hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)), hexagon[2])
         for hexagon in self.linehexagons:
             if abs(hexagon[1][0] - hexagon[0][0]) == 1:
                 midpoint = ((hexagon[0][0] + hexagon[1][0])/2,hexagon[1][1])
@@ -650,13 +666,45 @@ class Maze():
                 midpoint = (hexagon[0][0],(hexagon[0][1] + hexagon[1][1])/2)
             pixelcoords = (self.wspace//2 + midpoint[0]*self.gridsquaresize + self.linewidth/2 + 1,
                        self.hspace//2 + midpoint[1]*self.gridsquaresize + self.linewidth/2 + 1)
-            pygame.draw.polygon(display,hexagon[2],((pixelcoords[0]+hex_sl,pixelcoords[1]),
+            pygame.gfxdraw.aapolygon(display,((pixelcoords[0]+hex_sl,pixelcoords[1]),
                                                   (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
                                                   (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
                                                   (pixelcoords[0]-hex_sl,pixelcoords[1]),
                                                   (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
-                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)))
-
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)),hexagon[2])
+            pygame.gfxdraw.filled_polygon(display,((pixelcoords[0]+hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]+hex_height),
+                                                  (pixelcoords[0]-hex_sl,pixelcoords[1]),
+                                                  (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
+                                                  (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)),hexagon[2])
+    def drawSquares(self,display):
+        #0.45
+        #11/32 without rounded edges
+        #radius: 0.0553977275
+        squareside = int(self.squaresize*0.454545)
+        radius = 15
+        for square in self.squares:
+            center = (self.wspace//2 + square[0]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1,
+                        self.hspace//2 + square[1]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1)
+            pygame.draw.polygon(display,square[2],((center[0]+squareside//2,center[1]-squareside//2+radius),
+                                                   (center[0]+squareside//2-radius,center[1]-squareside//2),
+                                                   (center[0]-squareside//2+radius,center[1]-squareside//2),
+                                                   (center[0]-squareside//2,center[1]-squareside//2+radius),
+                                                   (center[0]-squareside//2,center[1]+squareside//2-radius),
+                                                   (center[0]-squareside//2+radius,center[1]+squareside//2),
+                                                   (center[0]+squareside//2-radius,center[1]+squareside//2),
+                                                   (center[0]+squareside//2,center[1]+squareside//2-radius)))
+            pygame.gfxdraw.aacircle(display,center[0]+squareside//2-radius,center[1]+squareside//2-radius,radius,square[2])
+            pygame.gfxdraw.aacircle(display,center[0]+squareside//2-radius,center[1]-squareside//2+radius,radius,square[2])
+            pygame.gfxdraw.aacircle(display,center[0]-squareside//2+radius,center[1]+squareside//2-radius,radius,square[2])
+            pygame.gfxdraw.aacircle(display,center[0]-squareside//2+radius,center[1]-squareside//2+radius,radius,square[2])
+            pygame.gfxdraw.filled_circle(display,center[0]+squareside//2-radius,center[1]+squareside//2-radius,radius,square[2])
+            pygame.gfxdraw.filled_circle(display,center[0]+squareside//2-radius,center[1]-squareside//2+radius,radius,square[2])
+            pygame.gfxdraw.filled_circle(display,center[0]-squareside//2+radius,center[1]+squareside//2-radius,radius,square[2])
+            pygame.gfxdraw.filled_circle(display,center[0]-squareside//2+radius,center[1]-squareside//2+radius,radius,square[2])
+            #pygame.draw.circle(display,square[2],center,self.squaresize//2)
+            
     def drawTrace(self,display):
         self.tracedisplay.fill(clear)
         self.trace.draw(self.tracedisplay)
@@ -675,21 +723,22 @@ startupdating = False
 done = False
 
 display = screen
-size = (7,5)
-nullzones = ((7,5,full),(7,4,full),(6,5,full),(0,0,full))#,(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
-symbols = ()
+size = (4,4)
+nullzones = (((0,0),(1,0),1),((1,0),(2,0),1))#((7,5,full),(7,4,full),(6,5,full),(0,0,full))#,(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
+squares = ((1,1,white),(2,3,black))
+stars = ()
 starts = ((2,2),(0,2),(2,4))
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
 ends = ((4,0,up),)
-hexagons = ()#((1,0,black),(2,1,black),(3,1,black),(0,2,black),(1,2,black),(3,3,black))
+hexagons = ((1,0,black),(2,1,black),(3,1,black),((0,2),(0,3),blue))
 linefrac = 1/4
 endfrac = 3/10
 bgcolor = (0,238,0)
 gridcolor = (0,100,0)
 tracecolor = (255,255,200)
 
-testmaze = Maze(display,size,nullzones,symbols,starts,ends,hexagons,linefrac,endfrac,bgcolor,gridcolor,tracecolor)
+testmaze = Maze(display,size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor)
 
 while not done:
     pygame.event.clear()#won't need to get events from pygame event queue, chuck'em
