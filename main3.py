@@ -498,7 +498,7 @@ class Maze():
             
     def snapToExit(self):
         if self.trace.pos[1] < self.hspace//2 + self.linewidth/4:
-            self.trace.tryMove(100000000,up)#just max it out, it will stop trying to move up once it hits the barrier
+            self.trace.tryMove(100000000,up)#just max it out, trymove will return False once it hits the barrier
             return True
         elif self.trace.pos[1] > self.hspace//2 + self.gridsquaresize*self.size[1] + self.linewidth - self.linewidth/4:
             self.trace.tryMove(100000000,down)
@@ -533,12 +533,40 @@ class Maze():
         self.compartmentalizeGrid(grid,pathvectors)
 
         groups = {}
-        for column in range(len(grid)):
+        for column in range(len(grid)):#create a dictionary of all grid squares where the group number is a key returning a list of all points in said group
             for row in range(len(grid[0])):
                 if grid[column][row] not in groups.keys():
                     groups[grid[column][row]] = []
-                groups[grid[column][row]].append((column,row))
+                for square in self.squares:
+                    if (square[0],square[1]) == (column,row):
+                        groups[grid[column][row]].append(("sqr",square[2]))
+                for star in self.stars:
+                    if (star[0],star[1]) == (column,row):
+                        groups[grid[column][row]].append(("star",star[2]))
         print(groups)
+        for group in groups.keys():
+            groupcolor = None
+            numofcolor = 0
+            numsofstars = {}
+            for symbol in groups[group]:
+                if symbol[0] == "sqr":
+                    if groupcolor == None:
+                        groupcolor = symbol[1]
+                    elif symbol[1] != groupcolor:
+                        return False
+                    numofcolor += 1
+                elif symbol[0] == "star":
+                    if symbol[1] not in numsofstars.keys():
+                        numsofstars[symbol[1]] = 0
+                    numsofstars[symbol[1]] += 1
+                    
+            for starcolor in numsofstars.keys():
+                if numsofstars[starcolor] == 1:
+                    if groupcolor != starcolor or numofcolor != 1:
+                        return False
+                elif numsofstars[starcolor] != 2:
+                    return False
+                    
             
         
 
@@ -554,7 +582,7 @@ class Maze():
                 if vector[0] == 0 or (vector[0]-1,vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = rightgroup
-                elif vector[0] == size[0] or (vector[0]+1,vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                elif vector[0] == self.size[0] or (vector[0]+1,vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
                     rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = leftgroup
                 else:
@@ -564,17 +592,18 @@ class Maze():
                 if vector[0] == 0 or (vector[0]-1,vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
                     rightgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = leftgroup
-                elif vector[0] == size[0] or (vector[0]+1,vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                elif vector[0] == self.size[0] or (vector[0]+1,vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]] = rightgroup
                 else:
                     grid[vector[0]][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]] = rightgroup
             elif vector[2] == right:
+                print(vector[1],size[1],self.size[1])
                 if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1]-1,full) in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = rightgroup
-                elif vector[1] == size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1]+1,full) in self.nullzones:
+                elif vector[1] == self.size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1]+1,full) in self.nullzones:
                     rightgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = leftgroup
                 else:
@@ -584,7 +613,7 @@ class Maze():
                 if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1]-1,full) in self.nullzones:
                     rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]] = leftgroup
-                elif vector[1] == size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1]+1,full) in self.nullzones:
+                elif vector[1] == self.size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1]+1,full) in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = rightgroup
                 else:
@@ -724,22 +753,23 @@ done = False
 
 display = screen
 size = (4,4)
-nullzones = (((0,0),(1,0),1),((1,0),(2,0),1))#((7,5,full),(7,4,full),(6,5,full),(0,0,full))#,(0,4,full))#(4,4,full))#((2,1),(3,1),1),((2,2),(2,3),1))
-squares = ((1,1,white),(2,3,black))
-stars = ()
-starts = ((2,2),(0,2),(2,4))
+nullzones = ()
+squares = ()#((0,1,white),(0,0,black),(3,3,green))
+stars = ((0,0,white),(1,0,white))#((0,1,white),)
+starts = ((0,4),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((4,0,up),)
-hexagons = ((1,0,black),(2,1,black),(3,1,black),((0,2),(0,3),blue))
-linefrac = 1/4
+ends = ((4,2,right),)
+hexagons = ()#((1,0,black),(2,1,black),(3,1,black),((0,2),(0,3),blue))
+linefrac = 1/5
 endfrac = 3/10
-bgcolor = (0,238,0)
-gridcolor = (0,100,0)
-tracecolor = (255,255,200)
+bgcolor = (0,70,205,255)
+gridcolor = (25,25,112,255)
+#bgcolor = (0,238,0)
+#gridcolor = (0,100,0)
+tracecolor = white#(255,255,200)
 
 testmaze = Maze(display,size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor)
-
 while not done:
     pygame.event.clear()#won't need to get events from pygame event queue, chuck'em
     mousestates = pygame.mouse.get_pressed()
