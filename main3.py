@@ -273,14 +273,13 @@ class Trace():
         return vectorlist
     
     def draw(self,display):
-        pygame.gfxdraw.filled_circle(display, self.startpos[0]+1,self.startpos[1]+1, self.currentradius+1, self.color)
+        pygame.draw.circle(display, self.color, (self.startpos[0]+1,self.startpos[1]+1), self.currentradius)
         self.pixelpath.append(self.pos)
         for coord in range(len(self.pixelpath)-1):
             pygame.draw.line(display,self.color,(self.pixelpath[coord][0],self.pixelpath[coord][1]),(self.pixelpath[coord+1][0],self.pixelpath[coord+1][1]),self.width)
             pygame.draw.circle(display,self.color,(self.pixelpath[coord][0]+1,self.pixelpath[coord][1]+1),int(self.radius))
         pygame.draw.circle(display,self.color,(self.pos[0]+1,self.pos[1]+1),int(self.radius))
         self.pixelpath.pop()
-
         
 class Maze():
     def __init__(self, display, size, nullzones, starts, ends, hexagons, squares, stars, linefrac, endfrac, bgcolor, gridcolor, tracecolor):
@@ -484,6 +483,7 @@ class Maze():
         self.drawStarts(self.mazeimage)
         self.drawHexagons(self.mazeimage)
         self.drawSquares(self.mazeimage)
+        self.drawStars(self.mazeimage)
         
     def tryStart(self,mousepos):
         mgridpos = [(mousepos[0] - (self.wspace//2) - self.linewidth//2)/self.gridsquaresize,
@@ -661,14 +661,10 @@ class Maze():
     def drawStarts(self,display):
         self.startlist = []
         for startpos in self.starts:
-            pygame.gfxdraw.aacircle(display,
-                                self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
-				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1,
-                                int(self.linewidth*1.15),self.gridcolor)
-            pygame.gfxdraw.filled_circle(display,
-                                self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
-				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1,
-                                int(self.linewidth*1.15),self.gridcolor)
+            pygame.draw.circle(display,self.gridcolor,
+                                (self.wspace//2 + self.linewidth//2 + startpos[0]*self.gridsquaresize + 1,
+				self.hspace//2 + self.linewidth//2 + startpos[1]*self.gridsquaresize + 1),
+                                int(self.linewidth*1.15))
             
     def drawHexagons(self,display):
         hex_sl = int(0.45*self.linewidth)
@@ -708,9 +704,6 @@ class Maze():
                                                   (pixelcoords[0]-hex_sl//2,pixelcoords[1]-hex_height),
                                                   (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)),hexagon[2])
     def drawSquares(self,display):
-        #0.45
-        #11/32 without rounded edges
-        #radius: 0.0553977275
         squareside = int(self.squaresize*0.454545)
         radius = 15
         for square in self.squares:
@@ -732,8 +725,57 @@ class Maze():
             pygame.gfxdraw.filled_circle(display,center[0]+squareside//2-radius,center[1]-squareside//2+radius,radius,square[2])
             pygame.gfxdraw.filled_circle(display,center[0]-squareside//2+radius,center[1]+squareside//2-radius,radius,square[2])
             pygame.gfxdraw.filled_circle(display,center[0]-squareside//2+radius,center[1]-squareside//2+radius,radius,square[2])
-            #pygame.draw.circle(display,square[2],center,self.squaresize//2)
-            
+
+    def drawStars(self,display):
+        #11/16 distance from center
+        #0.603570955
+        radius = int((0.22826087)*self.squaresize)
+        diagside = int(((0.22826087)*self.squaresize)/(math.sqrt(2)))
+        shortinner = int(radius*0.275985505)
+        longinner = int(radius*0.666254198)
+        for star in self.stars:
+            center = (self.wspace//2 + star[0]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1,
+                        self.hspace//2 + star[1]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1)
+            pygame.gfxdraw.aapolygon(display,((center[0]+radius,center[1]),
+                                            (center[0]+longinner,center[1]-shortinner),
+                                            (center[0]+diagside,center[1]-diagside),
+                                            (center[0]+shortinner,center[1]-longinner),
+                                            (center[0],center[1]-radius),
+                                            (center[0]-shortinner,center[1]-longinner),
+                                            (center[0]-diagside,center[1]-diagside),
+                                            (center[0]-longinner,center[1]-shortinner),
+                                            (center[0]-radius,center[1]),
+                                            (center[0]-longinner,center[1]+shortinner),
+                                            (center[0]-diagside,center[1]+diagside),
+                                            (center[0]-shortinner,center[1]+longinner),
+                                            (center[0],center[1]+radius),
+                                            (center[0]+shortinner,center[1]+longinner),
+                                            (center[0]+diagside,center[1]+diagside),
+                                            (center[0]+longinner,center[1]+shortinner),
+                                            (center[0]+radius,center[1])),
+                                             star[2])
+            pygame.gfxdraw.filled_polygon(display,((center[0]+radius,center[1]),
+                                            (center[0]+longinner,center[1]-shortinner),
+                                            (center[0]+diagside,center[1]-diagside),
+                                            (center[0]+shortinner,center[1]-longinner),
+                                            (center[0],center[1]-radius),
+                                            (center[0]-shortinner,center[1]-longinner),
+                                            (center[0]-diagside,center[1]-diagside),
+                                            (center[0]-longinner,center[1]-shortinner),
+                                            (center[0]-radius,center[1]),
+                                            (center[0]-longinner,center[1]+shortinner),
+                                            (center[0]-diagside,center[1]+diagside),
+                                            (center[0]-shortinner,center[1]+longinner),
+                                            (center[0],center[1]+radius),
+                                            (center[0]+shortinner,center[1]+longinner),
+                                            (center[0]+diagside,center[1]+diagside),
+                                            (center[0]+longinner,center[1]+shortinner),
+                                            (center[0]+radius,center[1])),
+                                             star[2])
+                                     
+           
+
+        
     def drawTrace(self,display):
         self.tracedisplay.fill(clear)
         self.trace.draw(self.tracedisplay)
@@ -752,14 +794,14 @@ startupdating = False
 done = False
 
 display = screen
-size = (4,4)
+size = (3,3)
 nullzones = ()
 squares = ()#((0,1,white),(0,0,black),(3,3,green))
-stars = ((0,0,white),(1,0,white))#((0,1,white),)
-starts = ((0,4),)
+stars = ((0,0,white),(1,0,white),(1,1,green),(0,1,green))#((0,1,white),)
+starts = ((0,0),)#((0,4),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((4,2,right),)
+ends = ((3,0,right),)
 hexagons = ()#((1,0,black),(2,1,black),(3,1,black),((0,2),(0,3),blue))
 linefrac = 1/5
 endfrac = 3/10
