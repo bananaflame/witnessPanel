@@ -1,5 +1,7 @@
 import pygame, pygame.gfxdraw
 import math
+import pickle
+import os
 from copy import deepcopy
 
 black = (  0,  0,    0) #establishing some constants for code readability
@@ -7,6 +9,7 @@ white = (255, 255, 255)
 blue =  (  0,   0, 255)
 green = (  0, 255,   0)
 red =   (255,   0,   0)
+orange = (255,150,36)
 clear = (1,1,1)
 
 full = -1
@@ -282,7 +285,7 @@ class Trace():
         self.pixelpath.pop()
         
 class Maze():
-    def __init__(self, display, size, nullzones, starts, ends, hexagons, squares, stars, linefrac, endfrac, bgcolor, gridcolor, tracecolor):
+    def __init__(self, display, size, nullzones, starts, ends, hexagons, squares, stars, linefrac, endfrac, bgcolor, gridcolor, tracecolor, tracecorrectcolor, tracewrongcolor):
         self.size = size #tuple with (x,y)
         self.nullzones = nullzones
         self.starts = starts #list of starting point positions
@@ -295,6 +298,8 @@ class Maze():
         self.bgcolor = bgcolor #color of squares and border
         self.gridcolor = gridcolor #color of grid lines
         self.tracecolor = tracecolor #color of trace
+        self.tracecorrectcolor = tracecorrectcolor
+        self.tracewrongcolor = tracewrongcolor
         
         self.tracedisplay = pygame.Surface((display.get_width(),display.get_height()))
         self.tracedisplay.set_colorkey(clear)#makes everything that's that color transparent
@@ -543,12 +548,11 @@ class Maze():
                 for star in self.stars:
                     if (star[0],star[1]) == (column,row):
                         groups[grid[column][row]].append(("star",star[2]))
-        print(groups)
-        for group in groups.keys():
+        for groupnum in groups.keys():#all the compartments of the maze
             groupcolor = None
             numofcolor = 0
-            numsofstars = {}
-            for symbol in groups[group]:
+            numsofstars = {} #dictionary of the amounts of stars of different colors, keys are the colors of the stars
+            for symbol in groups[groupnum]:
                 if symbol[0] == "sqr":
                     if groupcolor == None:
                         groupcolor = symbol[1]
@@ -561,16 +565,11 @@ class Maze():
                     numsofstars[symbol[1]] += 1
                     
             for starcolor in numsofstars.keys():
-                if numsofstars[starcolor] == 1:
-                    if groupcolor != starcolor or numofcolor != 1:
-                        return False
+                if groupcolor == starcolor and numsofstars[starcolor] + numofcolor != 2:
+                    return False
                 elif numsofstars[starcolor] != 2:
                     return False
                     
-            
-        
-
-        
         return True
     
     def compartmentalizeGrid(self,grid,vectorlist):
@@ -599,7 +598,6 @@ class Maze():
                     grid[vector[0]][vector[1]] = leftgroup
                     grid[vector[0]-1][vector[1]] = rightgroup
             elif vector[2] == right:
-                print(vector[1],size[1],self.size[1])
                 if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1]-1,full) in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = rightgroup
@@ -788,30 +786,43 @@ pygame.init()
 displaysize = [900,900]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
+
+size = (4,3)
+nullzones = ()
+squares = ((0,0,black),(1,0,black),(1,1,black),(0,1,black),(2,0,white),(3,0,white),(2,1,white),(3,1,white))
+stars = ((0,2,black),(3,2,black))
+starts = ((2,3),)
+#reminder: when only one tuple in another tuple, needs comma at end to tell python
+#it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
+ends = ((2,0,up),)
+hexagons = ()
+linefrac = 1/3
+endfrac = 1/3
+bgcolor = (120,120,138)
+gridcolor = (50,50,54)
+#bgcolor = (0,238,0)
+#gridcolor = (0,100,0)
+tracecolor = white#(255,255,200)
+tracecorrectcolor = orange
+tracewrongcolor = black
+attributes = [size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor,tracecorrectcolor,tracewrongcolor]
+
+testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
+
+series = "treehouse_orange2_left"
+numinseries = "3"
+if not os.path.exists("puzzles/"+series):
+    os.makedirs("puzzles/"+series)
+    
+mazefile = open("puzzles/"+series+"/"+numinseries+".maze","wb")
+pickle.dump(attributes,mazefile,-1)
+mazefile.close()
+
 m1prev = False
 is_alive = False
 startupdating = False
 done = False
 
-display = screen
-size = (3,3)
-nullzones = ()
-squares = ()#((0,1,white),(0,0,black),(3,3,green))
-stars = ((0,0,white),(1,0,white),(1,1,green),(0,1,green))#((0,1,white),)
-starts = ((0,0),)#((0,4),)
-#reminder: when only one tuple in another tuple, needs comma at end to tell python
-#it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((3,0,right),)
-hexagons = ()#((1,0,black),(2,1,black),(3,1,black),((0,2),(0,3),blue))
-linefrac = 1/5
-endfrac = 3/10
-bgcolor = (0,70,205,255)
-gridcolor = (25,25,112,255)
-#bgcolor = (0,238,0)
-#gridcolor = (0,100,0)
-tracecolor = white#(255,255,200)
-
-testmaze = Maze(display,size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor)
 while not done:
     pygame.event.clear()#won't need to get events from pygame event queue, chuck'em
     mousestates = pygame.mouse.get_pressed()
@@ -824,8 +835,10 @@ while not done:
             if testmaze.snapToExit():
                 if testmaze.checkSolution():
                     testmaze.trace.is_validated = True
+                    testmaze.trace.color = testmaze.tracecorrectcolor
                 else:
                     testmaze.trace.is_alive = False
+                    testmaze.trace.color = testmaze.tracewrongcolor
             else:
                 testmaze.trace.is_alive = False
             
