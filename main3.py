@@ -248,14 +248,26 @@ class Trace():
             pass
         
     def addStartBorders(self):
-        if self.path[0][0] != 0 and self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] == None:
+        try:
+            if self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] == None:
                 self.mazebarriers[int(self.path[0][0])-1][int(self.path[0][1])][right] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 - self.fullradius
-        if self.path[0][0] != self.mazesize[0] and self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] == None:
+        except:
+            pass
+        try:
+            if self.mazesize[0] and self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] == None:
                 self.mazebarriers[int(self.path[0][0])+1][int(self.path[0][1])][left] = self.xborder + self.gridsquaresize*self.path[0][0] + self.width/2 + self.fullradius
-        if self.path[0][1] != 0 and self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] == None:
-            self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 - self.fullradius
-        if self.path[0][1] != self.mazesize[1] and self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] == None:
-            self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 + self.fullradius
+        except:
+            pass
+        try:
+            if self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] == None:
+                self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])-1][down] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 - self.fullradius
+        except:
+            pass
+        try:
+            if self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] == None:
+                self.mazebarriers[int(self.path[0][0])][int(self.path[0][1])+1][up] = self.yborder + self.gridsquaresize*self.path[0][1] + self.width/2 + self.fullradius
+        except:
+            pass
 
     def pathToVectors(self):
         vectorlist = []
@@ -528,7 +540,7 @@ class Maze():
                 return False
             
         #don't forget about triangles here
-
+            
         pathvectors = self.trace.pathToVectors()
         grid = []
         for column in range(self.size[0]):
@@ -556,7 +568,7 @@ class Maze():
                 if symbol[0] == "sqr":
                     if groupcolor == None:
                         groupcolor = symbol[1]
-                    elif symbol[1] != groupcolor:
+                    elif symbol[1] != None and symbol[1] != groupcolor:
                         return False
                     numofcolor += 1
                 elif symbol[0] == "star":
@@ -569,7 +581,7 @@ class Maze():
                     return False
                 elif numsofstars[starcolor] != 2:
                     return False
-                    
+                        
         return True
     
     def compartmentalizeGrid(self,grid,vectorlist):
@@ -578,45 +590,33 @@ class Maze():
         for vector in vectorlist:
             currgroup = max(leftgroup,rightgroup)
             if vector[2] == up:
-                if vector[0] == 0 or (vector[0]-1,vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
-                    leftgroup = currgroup + 1
-                    grid[vector[0]][vector[1]-1] = rightgroup
-                elif vector[0] == self.size[0] or (vector[0]+1,vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                if vector[0] != 0 and (vector[0]-1,vector[1]-1,full) not in self.nullzones and (vector[0]-1,vector[1],full) not in self.nullzones:
                     rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = leftgroup
-                else:
+                elif vector[0] != self.size[0] and (vector[0]+1,vector[1]-1,full) not in self.nullzones and (vector[0]+1,vector[1],full) not in self.nullzones:
+                    leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]-1] = rightgroup
-                    grid[vector[0]-1][vector[1]-1] = leftgroup
             elif vector[2] == down:
-                if vector[0] == 0 or (vector[0]-1,vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1],full) in self.nullzones:
-                    rightgroup = currgroup + 1
-                    grid[vector[0]][vector[1]] = leftgroup
-                elif vector[0] == self.size[0] or (vector[0]+1,vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1],full) in self.nullzones:
+                if vector[0] != 0 and (vector[0]-1,vector[1]+1,full) not in self.nullzones and (vector[0]-1,vector[1],full) not in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]] = rightgroup
-                else:
+                elif vector[0] != self.size[0] and (vector[0]+1,vector[1]+1,full) not in self.nullzones and (vector[0]+1,vector[1],full) not in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = leftgroup
-                    grid[vector[0]-1][vector[1]] = rightgroup
             elif vector[2] == right:
-                if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]+1,vector[1]-1,full) in self.nullzones:
+                if vector[1] != 0 and (vector[0],vector[1]-1,full) not in self.nullzones and (vector[0]+1,vector[1]-1,full) not in self.nullzones:
+                    rightgroup = currgroup + 1
+                    grid[vector[0]][vector[1]-1] = leftgroup                
+                elif vector[1] != self.size[1] and (vector[0],vector[1]+1,full) not in self.nullzones and (vector[0]+1,vector[1]+1,full) not in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]][vector[1]] = rightgroup
-                elif vector[1] == self.size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]+1,vector[1]+1,full) in self.nullzones:
-                    rightgroup = currgroup + 1
-                    grid[vector[0]][vector[1]-1] = leftgroup
-                else:
-                    grid[vector[0]][vector[1]] = rightgroup
-                    grid[vector[0]][vector[1]-1] = leftgroup
             elif vector[2] == left:
-                if vector[1] == 0 or (vector[0],vector[1]-1,full) in self.nullzones or (vector[0]-1,vector[1]-1,full) in self.nullzones:
-                    rightgroup = currgroup + 1
-                    grid[vector[0]-1][vector[1]] = leftgroup
-                elif vector[1] == self.size[1] or (vector[0],vector[1]+1,full) in self.nullzones or (vector[0]-1,vector[1]+1,full) in self.nullzones:
+                if vector[1] != 0 and (vector[0],vector[1]-1,full) not in self.nullzones and (vector[0]-1,vector[1]-1,full) not in self.nullzones:
                     leftgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]-1] = rightgroup
-                else:
+                elif vector[1] != self.size[1] and (vector[0],vector[1]+1,full) not in self.nullzones and (vector[0]-1,vector[1]+1,full) not in self.nullzones:
+                    rightgroup = currgroup + 1
                     grid[vector[0]-1][vector[1]] = leftgroup
-                    grid[vector[0]-1][vector[1]-1] = rightgroup
         
         is_filled = False
         infinite = 0
@@ -703,7 +703,7 @@ class Maze():
                                                   (pixelcoords[0]+hex_sl//2,pixelcoords[1]-hex_height)),hexagon[2])
     def drawSquares(self,display):
         squareside = int(self.squaresize*0.454545)
-        radius = 15
+        radius = squareside//4
         for square in self.squares:
             center = (self.wspace//2 + square[0]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1,
                         self.hspace//2 + square[1]*self.gridsquaresize + self.linewidth + self.squaresize//2 + 1)
@@ -782,46 +782,62 @@ class Maze():
         self.tracedisplay.set_alpha(256 - self.trace.fade)
         display.blit(self.tracedisplay,(0,0))
 
-pygame.init()
-displaysize = [900,900]
-screen = pygame.display.set_mode(displaysize)
-clock = pygame.time.Clock()
-
-size = (4,3)
+#code for generating maze files:
+''' 
+size = (3,3)
 nullzones = ()
-squares = ((0,0,black),(1,0,black),(1,1,black),(0,1,black),(2,0,white),(3,0,white),(2,1,white),(3,1,white))
-stars = ((0,2,black),(3,2,black))
-starts = ((2,3),)
+squares = ((1,0,black),(1,2,white),(0,2,black),(2,2,black),(0,3,white),(1,3,white),(2,3,white),(0,1,black),(3,0,black),(3,1,black),(3,3,black),(2,0,white))
+stars = ()
+starts = ((0,4),)
 #reminder: when only one tuple in another tuple, needs comma at end to tell python
 #it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((2,0,up),)
+ends = ((3,4,down),)
 hexagons = ()
-linefrac = 1/3
-endfrac = 1/3
-bgcolor = (120,120,138)
-gridcolor = (50,50,54)
-#bgcolor = (0,238,0)
-#gridcolor = (0,100,0)
-tracecolor = white#(255,255,200)
-tracecorrectcolor = orange
+linefrac = 0.26
+endfrac = 1/5
+bgcolor = (0,70,205,255)
+gridcolor = (25,25,112,255)
+tracecolor = white
+tracecorrectcolor = (180,180,255)
 tracewrongcolor = black
 attributes = [size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor,tracecorrectcolor,tracewrongcolor]
-
-testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
-
-series = "treehouse_orange2_left"
-numinseries = "3"
+attributes = [(3,3), (), ((2, 3),), ((2, 0, 0),), (), (), ((0, 0, (255, 150, 36)),(2,2, (255, 150, 36)),(1, 2, (255, 150, 36)),(0, 2, (255, 150, 36)),(2, 0, (255, 150, 36)),(1, 0, (255, 150, 36)),), 0.3333333333333333, 0.3333333333333333, (120, 120, 138), (50, 50, 54), (255, 255, 255), (255, 150, 36), (0, 0, 0)]
+series = "treehouse_orange1"
+numinseries = "10"
 if not os.path.exists("puzzles/"+series):
     os.makedirs("puzzles/"+series)
     
 mazefile = open("puzzles/"+series+"/"+numinseries+".maze","wb")
 pickle.dump(attributes,mazefile,-1)
 mazefile.close()
+'''
 
+testmaze = None
+currentmazenum = 1
+timetowait = 2#60*3
+timewaited = 0
 m1prev = False
 is_alive = False
 startupdating = False
+donefindingnextmaze = False
 done = False
+
+while testmaze == None:
+    series = input("Which maze series would you like to load?\n")
+    try:
+        mazefile = open("puzzles/"+series+"/1.maze","rb")
+        attributes = pickle.load(mazefile)
+        print(attributes)
+        mazefile.close()
+        testmaze = "maze will now be generated."
+    except:
+        print("This series name could not be found in the puzzle files. Please try again.")
+
+pygame.init()
+displaysize = [450,450]
+screen = pygame.display.set_mode(displaysize)
+clock = pygame.time.Clock()
+testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
 
 while not done:
     pygame.event.clear()#won't need to get events from pygame event queue, chuck'em
@@ -830,6 +846,7 @@ while not done:
         mousepos = pygame.mouse.get_pos()
         if m1prev == False:#mouse being pressed
             testmaze.tryStart(mousepos)
+            timewaited = 0
         elif testmaze.trace.is_alive and not testmaze.trace.is_validated:#mouse being released
             #checking if it is alive prevents this from running when no trace is active
             if testmaze.snapToExit():
@@ -846,7 +863,31 @@ while not done:
         
     if mousestates[1]:#close program upon middle mouse
         done = True
-        
+
+    if testmaze.trace.is_validated:
+        timewaited += 1
+        if timewaited >= timetowait:
+            currentmazenum += 1
+            filesskipped = 0
+            while not donefindingnextmaze:
+                try:
+                    mazefile = open("puzzles/"+series+"/"+str(currentmazenum)+".maze","rb")
+                    attributes = pickle.load(mazefile)
+                    print(attributes)
+                    mazefile.close()
+                    testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
+                    donefindingnextmaze = True
+                except:
+                    filesskipped += 1
+                    currentmazenum += 1
+                if filesskipped >= 10:
+                    donefindingnextmaze = True
+                    print("end of series")
+                    #GPIO code goes here, done with maze series - note: runs every frame
+                
+            donefindingnextmaze = False
+            timewaited = 0
+            
     screen.fill(testmaze.gridcolor)
     testmaze.drawMaze(screen)
     
