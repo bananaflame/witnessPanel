@@ -827,7 +827,6 @@ while testmaze == None:
     try:
         mazefile = open("puzzles/"+series+"/1.maze","rb")
         attributes = pickle.load(mazefile)
-        print(attributes)
         mazefile.close()
         testmaze = "maze will now be generated."
     except:
@@ -873,7 +872,6 @@ while not done:
                 try:
                     mazefile = open("puzzles/"+series+"/"+str(currentmazenum)+".maze","rb")
                     attributes = pickle.load(mazefile)
-                    print(attributes)
                     mazefile.close()
                     testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
                     donefindingnextmaze = True
