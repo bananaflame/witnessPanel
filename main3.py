@@ -814,7 +814,7 @@ mazefile.close()
 
 testmaze = None
 currentmazenum = 1
-timetowait = 2#60*3
+timetowait = 150
 timewaited = 0
 m1prev = False
 is_alive = False
@@ -827,14 +827,13 @@ while testmaze == None:
     try:
         mazefile = open("puzzles/"+series+"/1.maze","rb")
         attributes = pickle.load(mazefile)
-        print(attributes)
         mazefile.close()
         testmaze = "maze will now be generated."
     except:
         print("This series name could not be found in the puzzle files. Please try again.")
 
 pygame.init()
-displaysize = [450,450]
+displaysize = [1000,800]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
@@ -873,7 +872,6 @@ while not done:
                 try:
                     mazefile = open("puzzles/"+series+"/"+str(currentmazenum)+".maze","rb")
                     attributes = pickle.load(mazefile)
-                    print(attributes)
                     mazefile.close()
                     testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
                     donefindingnextmaze = True
