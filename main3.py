@@ -3,6 +3,11 @@ import math
 import pickle
 import os
 from copy import deepcopy
+import RPi.GPIO as GPIO
+import time
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(4, GPIO.OUT)
 
 black = (  0,  0,    0) #establishing some constants for code readability
 white = (255, 255, 255)
@@ -782,39 +787,9 @@ class Maze():
         self.tracedisplay.set_alpha(256 - self.trace.fade)
         display.blit(self.tracedisplay,(0,0))
 
-#code for generating maze files:
-''' 
-size = (3,3)
-nullzones = ()
-squares = ((1,0,black),(1,2,white),(0,2,black),(2,2,black),(0,3,white),(1,3,white),(2,3,white),(0,1,black),(3,0,black),(3,1,black),(3,3,black),(2,0,white))
-stars = ()
-starts = ((0,4),)
-#reminder: when only one tuple in another tuple, needs comma at end to tell python
-#it's a tuple tuple, not just a tuple... lol   i.e. ((1,1),)
-ends = ((3,4,down),)
-hexagons = ()
-linefrac = 0.26
-endfrac = 1/5
-bgcolor = (0,70,205,255)
-gridcolor = (25,25,112,255)
-tracecolor = white
-tracecorrectcolor = (180,180,255)
-tracewrongcolor = black
-attributes = [size,nullzones,starts,ends,hexagons,squares,stars,linefrac,endfrac,bgcolor,gridcolor,tracecolor,tracecorrectcolor,tracewrongcolor]
-attributes = [(3,3), (), ((2, 3),), ((2, 0, 0),), (), (), ((0, 0, (255, 150, 36)),(2,2, (255, 150, 36)),(1, 2, (255, 150, 36)),(0, 2, (255, 150, 36)),(2, 0, (255, 150, 36)),(1, 0, (255, 150, 36)),), 0.3333333333333333, 0.3333333333333333, (120, 120, 138), (50, 50, 54), (255, 255, 255), (255, 150, 36), (0, 0, 0)]
-series = "treehouse_orange1"
-numinseries = "10"
-if not os.path.exists("puzzles/"+series):
-    os.makedirs("puzzles/"+series)
-    
-mazefile = open("puzzles/"+series+"/"+numinseries+".maze","wb")
-pickle.dump(attributes,mazefile,-1)
-mazefile.close()
-'''
-
 testmaze = None
 currentmazenum = 1
-timetowait = 2#60*3
+timetowait = 150 #two and a half seconds
 timewaited = 0
 m1prev = False
 is_alive = False
@@ -827,14 +802,13 @@ while testmaze == None:
     try:
         mazefile = open("puzzles/"+series+"/1.maze","rb")
         attributes = pickle.load(mazefile)
-        print(attributes)
         mazefile.close()
         testmaze = "maze will now be generated."
     except:
         print("This series name could not be found in the puzzle files. Please try again.")
 
 pygame.init()
-displaysize = [450,450]
+displaysize = [600,450]
 screen = pygame.display.set_mode(displaysize)
 clock = pygame.time.Clock()
 testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
@@ -852,6 +826,7 @@ while not done:
             if testmaze.snapToExit():
                 if testmaze.checkSolution():
                     testmaze.trace.is_validated = True
+                    timeunlocked = 0
                     testmaze.trace.color = testmaze.tracecorrectcolor
                 else:
                     testmaze.trace.is_alive = False
@@ -873,7 +848,7 @@ while not done:
                 try:
                     mazefile = open("puzzles/"+series+"/"+str(currentmazenum)+".maze","rb")
                     attributes = pickle.load(mazefile)
-                    print(attributes)
+
                     mazefile.close()
                     testmaze = Maze(screen,attributes[0],attributes[1],attributes[2],attributes[3],attributes[4],attributes[5],attributes[6],attributes[7],attributes[8],attributes[9],attributes[10],attributes[11],attributes[12],attributes[13])
                     donefindingnextmaze = True
@@ -882,7 +857,10 @@ while not done:
                     currentmazenum += 1
                 if filesskipped >= 10:
                     donefindingnextmaze = True
-                    print("end of series")
+                    if timeunlocked < 10:#prevent solenoid from overheating
+                        GPIO.output(4,1)
+                    else:
+                        GPIO.output(4,0)
                     #GPIO code goes here, done with maze series - note: runs every frame
                 
             donefindingnextmaze = False
@@ -897,3 +875,4 @@ while not done:
     clock.tick(60)
     
 pygame.quit()
+GPIO.cleanup()
